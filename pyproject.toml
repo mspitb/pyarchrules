@@ -1,0 +1,79 @@
+[project]
+name = "pyarchrules"
+version = "0.0.1a0"
+description = "Architecture validation library for Python projects"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {file = "LICENSE"}
+authors = [
+    {name = "PyArchRules Contributors"}
+]
+keywords = ["architecture", "validation", "testing", "monorepo", "microservices"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "tomlkit==0.14.0",
+    "typer>=0.23.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/pyarchrules"
+Documentation = "https://github.com/yourusername/pyarchrules#readme"
+Repository = "https://github.com/yourusername/pyarchrules"
+Issues = "https://github.com/yourusername/pyarchrules/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.0",
+    "ruff==0.15.1",
+    "black==26.1.0",
+    "isort==7.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.0",
+    "ruff==0.15.1",
+    "black==26.1.0",
+    "isort==7.0.0",
+]
+
+[tool.uv]
+package = true
+
+[project.scripts]
+pyarchrules = "pyarchrules.cli:main"
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: Unit tests for core logic (fast, isolated)",
+    "cli: CLI command tests using Typer's CliRunner",
+    "integration: End-to-end integration tests (slower)",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = []
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
