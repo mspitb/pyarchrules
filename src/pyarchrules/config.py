@@ -34,6 +34,10 @@ class PyArchConfig:
         with open(self._path, "w", encoding="utf-8") as f:
             f.write(tomlkit.dumps(self._doc))
 
+    def _get_pyarchrules(self) -> dict:
+        """Get [tool.pyarchrules] section."""
+        return self._doc.get("tool", {}).get("pyarchrules", {})
+
     def is_initialized(self) -> bool:
         """Check if [tool.pyarchrules] section exists."""
         return "pyarchrules" in self._doc.get("tool", {})
@@ -59,15 +63,13 @@ class PyArchConfig:
 
     def get_services(self) -> dict[str, str]:
         """Get all configured services as a dict mapping name to path."""
-        pyarch = self._doc.get("tool", {}).get("pyarchrules", {})
-        services = pyarch.get("services", {})
+        services = self._get_pyarchrules().get("services", {})
 
         if not isinstance(services, dict):
             return {}
 
         result = {}
         for name, service_data in services.items():
-            # Support both nested tables and simple key=value format
             if isinstance(service_data, dict):
                 path = service_data.get("path")
                 if path:
@@ -104,8 +106,7 @@ class PyArchConfig:
         if not self.is_initialized():
             raise PyArchError("[tool.pyarchrules] not initialized")
 
-        pyarch = self._doc.get("tool", {}).get("pyarchrules", {})
-        services = pyarch.get("services", {})
+        services = self._get_pyarchrules().get("services", {})
 
         if name not in services:
             raise PyArchError(f"Service '{name}' not found")
@@ -114,8 +115,8 @@ class PyArchConfig:
 
     def get_project_name(self) -> str | None:
         """Get the project name from config."""
-        return self._doc.get("tool", {}).get("pyarchrules", {}).get("project_name")
+        return self._get_pyarchrules().get("project_name")
 
     def get_description(self) -> str | None:
         """Get the description from config."""
-        return self._doc.get("tool", {}).get("pyarchrules", {}).get("description")
+        return self._get_pyarchrules().get("description")
