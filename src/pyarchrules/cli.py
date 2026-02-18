@@ -56,7 +56,7 @@ def add_service(
     path: str = typer.Argument(None, help="Relative path to the service directory"),
 ):
     """Add a service to pyproject.toml. Prompts for missing arguments."""
-    root_path = Path(".").resolve()
+    root_path = Path.cwd()
 
     try:
         config = PyArchConfig.load(root_path)
@@ -84,12 +84,10 @@ def add_service(
         config.add_service(name, path)
         config.save()
 
-        if is_replacing:
-            typer.echo(f"✓ Service '{name}' updated with path '{path}'")
-        else:
-            typer.echo(f"✓ Service '{name}' added with path '{path}'")
+        action = "updated" if is_replacing else "added"
+        typer.echo(f"✓ Service '{name}' {action} with path '{path}'")
     except PyArchError as e:
-        typer.echo(f"❌ {e.message}")
+        typer.echo(f"❌ {str(e)}")
         raise typer.Exit(code=1)
 
 
@@ -98,8 +96,8 @@ def remove_service(
     name: str = typer.Argument(None, help="Service name to remove"),
     force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation"),
 ):
-    """Remove a service from pyproject.toml. Prompts for missing arguments."""
-    root_path = Path(".").resolve()
+    """Remove a service from pyproject.toml."""
+    root_path = Path.cwd()
 
     try:
         config = PyArchConfig.load(root_path)
@@ -130,14 +128,14 @@ def remove_service(
         config.save()
         typer.echo(f"✓ Service '{name}' removed")
     except PyArchError as e:
-        typer.echo(f"❌ {e.message}")
+        typer.echo(f"❌ {str(e)}")
         raise typer.Exit(code=1)
 
 
 @app.command("list-services")
 def list_services():
     """List all configured services."""
-    root_path = Path(".").resolve()
+    root_path = Path.cwd()
 
     try:
         config = PyArchConfig.load(root_path)

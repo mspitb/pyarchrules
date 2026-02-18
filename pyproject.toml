@@ -1,12 +1,12 @@
 [project]
 name = "pyarchrules"
-version = "0.0.1a0"
+version = "0.0.1a1"
 description = "Architecture validation library for Python projects"
 readme = "README.md"
 requires-python = ">=3.12"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 authors = [
-    {name = "PyArchRules Contributors"}
+    { name = "Sergei Mikheev" }
 ]
 keywords = ["architecture", "validation", "testing", "monorepo", "microservices"]
 classifiers = [
@@ -20,7 +20,9 @@ classifiers = [
 ]
 dependencies = [
     "tomlkit==0.14.0",
-    "typer>=0.23.0",
+    "typer==0.23.0",
+    "pydantic==2.12.5",
+    "loguru==0.7.0"
 ]
 
 [project.urls]
@@ -29,24 +31,16 @@ Documentation = "https://github.com/yourusername/pyarchrules#readme"
 Repository = "https://github.com/yourusername/pyarchrules"
 Issues = "https://github.com/yourusername/pyarchrules/issues"
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=9.0.0",
-    "ruff==0.15.1",
-    "black==26.1.0",
-    "isort==7.0.0",
-]
+[tool.uv]
+package = true
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.0",
-    "ruff==0.15.1",
-    "black==26.1.0",
+    "pytest===9.0.2",
     "isort==7.0.0",
+    "ruff==0.15.1",
+    "black==26.1.0"
 ]
-
-[tool.uv]
-package = true
 
 [project.scripts]
 pyarchrules = "pyarchrules.cli:main"
