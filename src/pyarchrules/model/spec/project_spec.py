@@ -12,4 +12,5 @@ class ProjectSpec(BaseModel):
 
     strict: bool = True
     validate_paths: bool = True
+    fail_on_warning: bool = False
     services: dict[str, ServiceSpec] = Field(default_factory=dict)

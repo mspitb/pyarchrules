@@ -3,14 +3,18 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" height="18"></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+" height="18"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
 </p>
 
-<p align="center">
-  <strong>Define and enforce architectural rules for Python projects with ease.</strong><br>
-  Perfect for monorepos, microservices, and maintaining clean architecture boundaries.
-</p>
+
+## Features
+
+- 🏗️ **Structure validation** - enforce directory tree requirements
+- 🔗 **Dependency rules** - control module imports (e.g., `api -> domain`)
+- 🎯 **DSL & Config** - use Python DSL or TOML configuration
+- 🚀 **Zero setup** - works with `pyproject.toml`
+- 🔍 **CLI & API** - integrate into CI/CD or use programmatically
 
 ## Installation
 
@@ -20,56 +24,29 @@ pip install pyarchrules
 
 ## Quick Start
 
-Initialize in your project:
-
 ```bash
+# Initialize
 pyarchrules init-project
+
+# Check architecture
+pyarchrules check
 ```
 
-This creates configuration in `pyproject.toml`:
+## Configuration Example
 
 ```toml
 [tool.pyarchrules]
-project_name = "my-project"
-description = "Architecture rules for this project"
+project_name = "myapp"
 
-[tool.pyarchrules.services]
-root = "."
-```
+[tool.pyarchrules.services.backend]
+path = "src/backend"
 
-## CLI Commands
+# Enforce directory structure
+tree = ["api", "domain", "infra"]
+tree_strict = true
 
-```bash
-# Initialize project
-pyarchrules init-project
-
-# Add a service
-pyarchrules add-service api services/api
-
-# List services
-pyarchrules list-services
-
-# Remove a service
-pyarchrules remove-service api
-```
-
-## Configuration
-
-Define services in `pyproject.toml`:
-
-```toml
-[tool.pyarchrules]
-project_name = "my-project"
-description = "Architecture rules"
-
-[tool.pyarchrules.services]
-root = "."
-
-[tool.pyarchrules.services.api]
-path = "services/api"
-
-[tool.pyarchrules.services.billing]
-path = "services/billing"
+# Control dependencies (api can import from domain)
+dependencies = ["api -> domain", "domain -> infra"]
 ```
 
 ## Python API
@@ -77,40 +54,58 @@ path = "services/billing"
 ```python
 from pyarchrules import PyArchRules
 
-# Load configuration
-rules = PyArchRules(".")
+rules = PyArchRules()
 
-# Access services
-print(rules.services)  # {'root': '.', 'api': 'services/api', ...}
+# DSL validation
+rules.for_service("backend") \
+    .must_contain_folders(["api", "domain"])
+
+result = rules.validate()
 ```
 
-## Development Status
+## CLI Commands
 
-⚠️ **Alpha Release** - API may change in future versions.
+| Command | Description |
+|---------|-------------|
+| `pyarchrules init-project` | Initialize configuration |
+| `pyarchrules check` | Validate architecture |
+| `pyarchrules add-service NAME PATH` | Add service |
+| `pyarchrules list-services` | List all services |
+
+## Use Cases
+
+**Monorepos** - enforce boundaries between services
+```toml
+[tool.pyarchrules.services.auth]
+path = "services/auth"
+dependencies = ["auth -> shared"]
+```
+
+**Clean Architecture** - validate layer dependencies
+```toml
+dependencies = [
+    "api -> application",
+    "application -> domain"
+]
+```
+
+**Microservices** - ensure consistent structure
+```toml
+tree = ["api", "domain", "infrastructure"]
+tree_strict = true
+```
 
 ## Development
 
-### Setup
-
 ```bash
-# Install with dev dependencies
 uv pip install -e ".[dev]"
-```
-
-### Code Quality Tools
-
-Using Make (recommended):
-
-```bash
-# Run all linters
-make lint
-
-# Auto-format code
-make format
-
-# Run tests
 make test
+make lint
 ```
+
+## Status
+
+⚠️ **Alpha** - API may change before 1.0 release
 
 ## License
 

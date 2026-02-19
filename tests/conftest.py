@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for pyarchrules tests."""
+"""Shared pytest fixtures."""
 
 from __future__ import annotations
 
@@ -13,19 +13,9 @@ import pytest
 import tomlkit
 from typer.testing import CliRunner
 
-TMP_TESTS_FOLDER_NAME = ".pyarchrules-tests-tmp"
-
-
-def dump_toml(data: dict[str, Any]) -> str:
-    return tomlkit.dumps(data)
-
-
-def load_toml(path: Path) -> dict[str, Any]:
-    return tomllib.loads(path.read_text(encoding="utf-8"))
-
 
 class Project:
-    """Helper for creating test project structures."""
+    """Test project helper."""
 
     def __init__(self, root: Path):
         self.root = root
@@ -35,12 +25,10 @@ class Project:
         return self.root / "pyproject.toml"
 
     def write_pyproject(self, data: dict[str, Any]) -> Path:
-        """Write a dictionary as pyproject.toml using tomlkit."""
-        self.pyproject.write_text(dump_toml(data), encoding="utf-8")
+        self.pyproject.write_text(tomlkit.dumps(data), encoding="utf-8")
         return self.pyproject
 
     def write_minimal_pyproject(self, project_name: str = "test") -> Path:
-        """Create a minimal pyproject.toml with just [project] section."""
         return self.write_pyproject({"project": {"name": project_name}})
 
     def mkdir(self, rel: str) -> Path:
@@ -55,52 +43,31 @@ class Project:
         return p
 
     def read_pyproject(self) -> dict[str, Any]:
-        """Read pyproject.toml and return as dictionary."""
-        return load_toml(self.pyproject)
+        return tomllib.loads(self.pyproject.read_text(encoding="utf-8"))
 
     def get_pyarchrules_config(self) -> dict[str, Any]:
-        """Get [tool.pyarchrules] section from pyproject.toml."""
         data = self.read_pyproject()
         return data.get("tool", {}).get("pyarchrules", {})
 
 
 @pytest.fixture(scope="session")
 def setup_tmp_dir():
-    """
-    Create a session-wide temporary folder for pyarchrules tests
-    using tempfile.TemporaryDirectory().
-    """
-    # Create a TemporaryDirectory in system temp folder
-    temp_dir = tempfile.TemporaryDirectory(prefix=TMP_TESTS_FOLDER_NAME + "-")
-    base_tmp = Path(temp_dir.name)
-    base_tmp.mkdir(exist_ok=True)
-
-    yield base_tmp
-
+    temp_dir = tempfile.TemporaryDirectory(prefix=".pyarchrules-tests-")
+    yield Path(temp_dir.name)
     temp_dir.cleanup()
 
 
 @pytest.fixture()
 def tmp_test_dir(setup_tmp_dir, request) -> Path:
-    """
-    Per-test temporary folder inside the session temp folder.
-    """
-    test_name = request.node.name
-    test_dir = setup_tmp_dir / test_name
-
+    test_dir = setup_tmp_dir / request.node.name
     if test_dir.exists():
         shutil.rmtree(test_dir, ignore_errors=True)
-
     test_dir.mkdir(parents=True, exist_ok=True)
     return test_dir
 
 
 @pytest.fixture()
 def make_project(tmp_test_dir: Path) -> Callable[..., Project]:
-    """
-    Factory fixture for creating isolated test projects in temp folder.
-    """
-
     def _make(
         *,
         name: str = "test_project",
@@ -111,7 +78,6 @@ def make_project(tmp_test_dir: Path) -> Callable[..., Project]:
     ) -> Project:
         root = tmp_test_dir / name
         root.mkdir(parents=True, exist_ok=True)
-
         project = Project(root=root.resolve())
 
         if with_pyproject:
@@ -121,12 +87,10 @@ def make_project(tmp_test_dir: Path) -> Callable[..., Project]:
             }
 
             if services:
-                # New format: [tool.pyarchrules.services.NAME] with path = "..."
                 services_table = {}
                 for service_name, service_path in services.items():
                     services_table[service_name] = {"path": service_path}
                 data["tool"]["pyarchrules"]["services"] = services_table
-                # Create service directories if requested
                 if create_service_dirs:
                     for rel_path in services.values():
                         project.mkdir(rel_path)
@@ -144,3 +108,13 @@ def make_project(tmp_test_dir: Path) -> Callable[..., Project]:
 @pytest.fixture()
 def cli_runner() -> CliRunner:
     return CliRunner()
+
+
+@pytest.fixture()
+def make_service_spec(tmp_test_dir: Path) -> Callable[..., Any]:
+    from pyarchrules.model.spec import ServiceSpec
+
+    def _make(name: str = "test_service", path: str = ".", **kwargs) -> ServiceSpec:
+        return ServiceSpec(name=name, path=path, project_root=tmp_test_dir, **kwargs)
+
+    return _make

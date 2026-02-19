@@ -23,7 +23,7 @@ def test_add_service_with_arguments(make_project, cli_runner):
         os.chdir(cwd)
 
     assert result.exit_code == 0
-    assert "Service 'api' added" in result.stdout
+    assert "Added service 'api'" in result.stdout
 
     config = project.get_pyarchrules_config()
     assert "api" in config["services"]
@@ -48,7 +48,7 @@ def test_add_service_interactive_mode(make_project, cli_runner):
     assert result.exit_code == 0
     assert "Service name:" in result.stdout
     assert "Service path" in result.stdout  # Don't check for exact format since default is shown
-    assert "Service 'billing' added" in result.stdout
+    assert "Added service 'billing'" in result.stdout
 
     config = project.get_pyarchrules_config()
     assert "billing" in config["services"]
@@ -212,21 +212,21 @@ def test_list_services_shows_all(make_project, cli_runner):
 
 @pytest.mark.cli
 def test_list_services_empty(make_project, cli_runner):
-    """Should handle root service gracefully."""
+    """Should handle empty services section gracefully."""
     project = make_project(with_pyproject=False)
     project.write_minimal_pyproject()
 
     cwd = os.getcwd()
     try:
         os.chdir(project.root)
-        # Initialize creates root service
+        # Initialize doesn't create services section
         cli_runner.invoke(app, ["init-project", "."])
         result = cli_runner.invoke(app, ["list-services"])
     finally:
         os.chdir(cwd)
 
     assert result.exit_code == 0
-    assert "root" in result.stdout.lower()
+    assert "No services configured" in result.stdout
 
 
 @pytest.mark.cli

@@ -52,10 +52,10 @@ class PyArchConfig:
         pyarch = tomlkit.table()
         pyarch["project_name"] = project_name
         pyarch["description"] = description
-
-        services = tomlkit.table()
-        services["root"] = "."
-        pyarch["services"] = services
+        pyarch["root"] = "."
+        pyarch["strict"] = True
+        pyarch["validate_paths"] = True
+        pyarch["fail_on_warning"] = False
 
         pyarch.add(tomlkit.nl())
 
@@ -120,3 +120,19 @@ class PyArchConfig:
     def get_description(self) -> str | None:
         """Get the description from config."""
         return self._get_pyarchrules().get("description")
+
+    def get_root(self) -> str:
+        """Get the root path from config."""
+        return self._get_pyarchrules().get("root", ".")
+
+    def get_validate_paths(self) -> bool:
+        """Get the validate_paths setting from config."""
+        return self._get_pyarchrules().get("validate_paths", True)
+
+    def get_strict(self) -> bool:
+        """Get the strict setting from config."""
+        return self._get_pyarchrules().get("strict", True)
+
+    def get_fail_on_warning(self) -> bool:
+        """Get the fail_on_warning setting from config."""
+        return self._get_pyarchrules().get("fail_on_warning", False)

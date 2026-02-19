@@ -137,30 +137,47 @@ dependencies = ["api -> domain", "domain -> infra"]
         assert spec.services["svc"].dependencies == ["api -> domain", "domain -> infra"]
 
     def test_parses_tree_structure(self, tmp_test_dir):
-        """tree structure specification is parsed correctly."""
+        """tree structure specification is parsed correctly as list of strings."""
         root = tmp_test_dir / "tree_test"
         root.mkdir(parents=True, exist_ok=True)
         (root / "services/svc").mkdir(parents=True)
 
         toml_content = """
-[project]
-name = "test"
-
-[tool.pyarchrules.services.svc]
-path = "services/svc"
-
-[tool.pyarchrules.services.svc.tree."."]
-subdirs = ["api", "domain", "infra"]
-allow_extra = false
-"""
+        [project]
+        name = "test"
+        [tool.pyarchrules.services.svc]
+        path = "services/svc"
+        tree = ["api", "domain", "infra", "api/v1"]
+        tree_strict = true
+        tree_allow_files = false
+        """
         (root / "pyproject.toml").write_text(toml_content, encoding="utf-8")
 
         spec = SpecLoader(root).load()
 
-        assert "." in spec.services["svc"].tree
-        tree_node = spec.services["svc"].tree["."]
-        assert tree_node.subdirs == ["api", "domain", "infra"]
-        assert tree_node.allow_extra is False
+        assert spec.services["svc"].tree == ["api", "domain", "infra", "api/v1"]
+        assert spec.services["svc"].tree_strict is True
+        assert spec.services["svc"].tree_allow_files is False
+
+    def test_parses_tree_allow_files_default(self, tmp_test_dir):
+        """tree_allow_files defaults to True when not specified."""
+        root = tmp_test_dir / "tree_default"
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "services/svc").mkdir(parents=True)
+
+        toml_content = """
+        [project]
+        name = "test"
+        [tool.pyarchrules.services.svc]
+        path = "services/svc"
+        tree = ["api"]
+        tree_strict = true
+        """
+        (root / "pyproject.toml").write_text(toml_content, encoding="utf-8")
+
+        spec = SpecLoader(root).load()
+
+        assert spec.services["svc"].tree_allow_files is True  # default
 
     # -------------------------------------------------------------------------
     # Path validation
@@ -181,7 +198,7 @@ allow_extra = false
             create_service_dirs=False,
         )
 
-        with pytest.raises(PyArchError, match="not a directory"):
+        with pytest.raises(PyArchError, match="doesn't exist"):
             SpecLoader(project.root).load()
 
     def test_nonexistent_path_allowed_when_validation_disabled(self, tmp_test_dir):
