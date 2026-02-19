@@ -6,8 +6,6 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from pyarchrules.model.spec.tree_node_spec import TreeNodeSpec
-
 
 class ServiceSpec(BaseModel):
     """Specification for a service."""
@@ -16,7 +14,9 @@ class ServiceSpec(BaseModel):
     path: str
     project_root: Path
     allowed_service_dependencies: list[str] = Field(default_factory=list)
-    tree: dict[str, TreeNodeSpec] = Field(default_factory=dict)
+    tree: list[str] = Field(default_factory=list)
+    tree_strict: bool = False  # If True, no extra files/folders allowed in tree paths
+    tree_allow_files: bool = True  # If tree_strict=True, this allows files (but not folders)
     dependencies: list[str] = Field(default_factory=list)
 
     model_config = {"arbitrary_types_allowed": True}

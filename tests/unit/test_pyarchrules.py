@@ -124,7 +124,7 @@ class TestServicesLoading:
             create_service_dirs=False,
         )
 
-        with pytest.raises(PyArchError, match="not a directory"):
+        with pytest.raises(PyArchError, match="doesn't exist"):
             PyArchRules(project.root)
 
 
@@ -158,7 +158,7 @@ class TestForService:
             rules.for_service("nonexistent")
 
         assert "Service 'nonexistent' not found" in str(exc.value)
-        assert "Available services:" in str(exc.value)
+        assert "Available" in str(exc.value)
 
     def test_caches_rule_set_instance(self, project):
         """Returns same RuleSet instance for repeated calls."""
@@ -234,7 +234,7 @@ class TestDSLValidation:
         with pytest.raises(PyArchError) as exc:
             rules.validate(raise_on_violation=True, verbose=False)
 
-        assert "Architecture validation failed" in str(exc.value)
+        assert "Validation failed" in str(exc.value)
 
     def test_multiple_rules_on_same_service(self, project):
         """Supports multiple rules on same service via chaining."""

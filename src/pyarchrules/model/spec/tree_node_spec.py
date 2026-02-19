@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class TreeNodeSpec(BaseModel):
-    """Directory node specification."""
+    """Directory node specification.
 
-    subdirs: list[str] = Field(default_factory=list)
+    Represents a path that must exist in the service directory.
+    If allow_extra is False, no additional files/folders are allowed in that path.
+    """
+
+    path: str
     allow_extra: bool = True

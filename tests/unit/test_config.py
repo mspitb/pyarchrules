@@ -60,8 +60,10 @@ class TestPyArchConfigInitialization:
         assert "tool" in data
         assert "pyarchrules" in data["tool"]
         assert data["tool"]["pyarchrules"]["project_name"] == "test_project"
-        assert "services" in data["tool"]["pyarchrules"]
-        assert data["tool"]["pyarchrules"]["services"]["root"] == "."
+        assert data["tool"]["pyarchrules"]["root"] == "."
+        assert data["tool"]["pyarchrules"]["strict"] is True
+        assert data["tool"]["pyarchrules"]["validate_paths"] is True
+        assert data["tool"]["pyarchrules"]["fail_on_warning"] is False
 
     def test_initialize_with_custom_description(self, make_project):
         """Uses custom description when provided."""
@@ -118,7 +120,8 @@ class TestPyArchConfigServices:
         config = PyArchConfig.load(project.root)
         config.initialize(project_name="test")
 
-        assert config.get_services() == {"root": "."}
+        # After initialization, no services table exists - services are added separately
+        assert config.get_services() == {}
 
     def test_add_service_succeeds(self, make_project):
         """Adds a new service to configuration."""

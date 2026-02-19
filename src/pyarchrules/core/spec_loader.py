@@ -8,7 +8,6 @@ from pathlib import Path
 from pyarchrules.core.errors import PyArchError
 from pyarchrules.model.spec.project_spec import ProjectSpec
 from pyarchrules.model.spec.service_spec import ServiceSpec
-from pyarchrules.model.spec.tree_node_spec import TreeNodeSpec
 
 
 class SpecLoader:
@@ -26,6 +25,7 @@ class SpecLoader:
 
         strict = pyarchrules_config.get("strict", True)
         validate_paths = pyarchrules_config.get("validate_paths", True)
+        fail_on_warning = pyarchrules_config.get("fail_on_warning", False)
 
         services_data = pyarchrules_config.get("services", {})
         services = self._parse_services(services_data, validate_paths)
@@ -33,6 +33,7 @@ class SpecLoader:
         return ProjectSpec(
             strict=strict,
             validate_paths=validate_paths,
+            fail_on_warning=fail_on_warning,
             services=services,
         )
 
@@ -61,14 +62,18 @@ class SpecLoader:
         if isinstance(svc_data, str):
             rel_path = svc_data
             allowed_deps: list[str] = []
-            tree_data: dict = {}
+            tree_data: list[str] = []
+            tree_strict: bool = False
+            tree_allow_files: bool = True
             dependencies: list[str] = []
         else:
             rel_path = svc_data.get("path")
             if rel_path is None:
                 raise PyArchError(f"Service '{name}' must have 'path' key")
             allowed_deps = svc_data.get("allowed_service_dependencies", [])
-            tree_data = svc_data.get("tree", {})
+            tree_data = svc_data.get("tree", [])
+            tree_strict = svc_data.get("tree_strict", False)
+            tree_allow_files = svc_data.get("tree_allow_files", True)
             dependencies = svc_data.get("dependencies", [])
 
         rel_posix = str(rel_path).replace("\\", "/").rstrip("/") or "."
@@ -78,28 +83,15 @@ class SpecLoader:
             raise PyArchError(f"Service '{name}' path is outside project root: {rel_path}")
 
         if validate_paths and not full_path.is_dir():
-            raise PyArchError(f"Service '{name}' path is not a directory: {rel_path}")
-
-        tree = self._parse_tree(tree_data)
+            raise PyArchError(f"Service '{name}' path doesn't exist: {rel_path}")
 
         return ServiceSpec(
             name=name,
             path=rel_posix,
             project_root=self._project_root,
             allowed_service_dependencies=allowed_deps,
-            tree=tree,
+            tree=tree_data if isinstance(tree_data, list) else [],
+            tree_strict=tree_strict,
+            tree_allow_files=tree_allow_files,
             dependencies=dependencies,
         )
-
-    def _parse_tree(self, tree_data: dict) -> dict[str, TreeNodeSpec]:
-        """Parse tree structure specification."""
-        tree = {}
-        for path, node_data in tree_data.items():
-            if isinstance(node_data, dict):
-                tree[path] = TreeNodeSpec(
-                    subdirs=node_data.get("subdirs", []),
-                    allow_extra=node_data.get("allow_extra", True),
-                )
-            else:
-                tree[path] = TreeNodeSpec(subdirs=node_data if isinstance(node_data, list) else [])
-        return tree
