@@ -42,7 +42,10 @@ dev = [
     "pytest===9.0.2",
     "isort==7.0.0",
     "ruff==0.15.1",
-    "black==26.1.0"
+    "black==26.1.0",
+    "mkdocs==1.6.1",
+    "mkdocs-material>=9.7.2",
+    "zensical>=0.0.23",
 ]
 
 [project.scripts]
