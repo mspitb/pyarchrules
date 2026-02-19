@@ -1,6 +1,6 @@
 [project]
 name = "pyarchrules"
-version = "0.0.1a1"
+version = "0.0.1a2"
 description = "Architecture validation library for Python projects"
 readme = "README.md"
 requires-python = ">=3.12"
