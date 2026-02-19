@@ -26,6 +26,7 @@ class SpecLoader:
 
         strict = pyarchrules_config.get("strict", True)
         validate_paths = pyarchrules_config.get("validate_paths", True)
+        fail_on_warning = pyarchrules_config.get("fail_on_warning", False)
 
         services_data = pyarchrules_config.get("services", {})
         services = self._parse_services(services_data, validate_paths)
@@ -33,6 +34,7 @@ class SpecLoader:
         return ProjectSpec(
             strict=strict,
             validate_paths=validate_paths,
+            fail_on_warning=fail_on_warning,
             services=services,
         )
 

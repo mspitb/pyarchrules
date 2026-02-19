@@ -1,0 +1,84 @@
+1) нужно сделать вывод логов такой же, как это делается в isort, ruff (loguru дурак), надо проверить как сделан cli в isort
+2) check вызывает спеку, а надо бы наверно через ядро делать pyarchrules (че там по флагам)
+
+
+
+[tool.pyarchrules]
+
+# Глобальный строгий режим
+# true  -> любые нарушения = exit 1
+# false -> warning
+strict = true
+
+# Проверять, что все каталоги из конфигурации существуют
+validate_paths = true
+
+# Максимальная допустимая глубина вложенности
+max_depth = 4
+
+
+
+# ==========================================================
+# СЕРВИС: billing
+# ==========================================================
+
+[tool.pyarchrules.services.billing]
+
+# Корень сервиса
+path = "services/billing/src"
+
+# Какие сервисы можно импортировать
+allowed_service_dependencies = ["shared"]
+
+
+# --------------------------
+# Описание структуры каталогов
+# --------------------------
+
+tree = {
+
+  # -------- API --------
+  "api" = { subdirs = ["controllers", "dto"], allow_extra = false },
+
+  "api/controllers" = {
+    subdirs = ["v1", "v2"],
+    allow_extra = false
+  },
+
+  # -------- DOMAIN --------
+  "domain" = {
+    subdirs = ["models", "services"],
+    allow_extra = false
+  },
+
+  "domain/models" = {
+    subdirs = ["user", "billing"],
+    allow_extra = false
+  },
+
+  # -------- INFRA --------
+  "infra" = {
+    subdirs = ["repositories", "migrations"],
+    allow_extra = true
+  }
+}
+
+
+# --------------------------
+# Разрешённые зависимости
+# --------------------------
+
+dependencies = [
+
+  # API может зависеть от domain
+  "api -> domain",
+
+  # Контроллеры могут использовать только модели
+  "api/controllers -> domain/models",
+
+  # Infra может использовать модели
+  "infra -> domain/models",
+
+  # Сервисы могут использовать репозитории
+  "domain/services -> infra/repositories"
+]

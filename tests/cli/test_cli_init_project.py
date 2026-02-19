@@ -72,8 +72,10 @@ def test_init_project_replaces_existing_values(make_project, cli_runner):
     # Values should be replaced with defaults
     assert config["project_name"] == "test_project"  # From root path name
     assert config["description"] == "Architecture rules for this project"
-    assert "services" in config
-    assert config["services"]["root"] == "."
+    assert config["root"] == "."
+    assert config["strict"] is True
+    assert config["validate_paths"] is True
+    assert config["fail_on_warning"] is False
 
 
 @pytest.mark.cli
@@ -91,7 +93,7 @@ def test_init_project_success_message(make_project, cli_runner):
 
 @pytest.mark.cli
 def test_init_project_creates_root_service(make_project, cli_runner):
-    """Should create root = "." in [tool.pyarchrules.services] when no services exist."""
+    """Should create root = "." in [tool.pyarchrules] when initializing."""
     project = make_project(with_pyproject=False)
     project.write_minimal_pyproject()
 
@@ -99,9 +101,10 @@ def test_init_project_creates_root_service(make_project, cli_runner):
 
     assert result.exit_code == 0
     config = project.get_pyarchrules_config()
-    assert "services" in config
-    assert "root" in config["services"]
-    assert config["services"]["root"] == "."
+    assert config["root"] == "."
+    assert config["strict"] is True
+    assert config["validate_paths"] is True
+    assert config["fail_on_warning"] is False
 
 
 @pytest.mark.cli
@@ -116,8 +119,11 @@ def test_init_project_replaces_existing_services(make_project, cli_runner):
     assert result.exit_code == 0
     config = project.get_pyarchrules_config()
     # Services should be REMOVED (replaced with fresh config)
-    assert "services" in config
-    assert config["services"] == {"root": "."}
+    assert "services" not in config
+    assert config["root"] == "."
+    assert config["strict"] is True
+    assert config["validate_paths"] is True
+    assert config["fail_on_warning"] is False
 
 
 @pytest.mark.cli
@@ -160,8 +166,10 @@ def test_init_project_force_skips_confirmation(make_project, cli_runner):
     # Should be reinitialized
     config = project.get_pyarchrules_config()
     assert config["project_name"] == "test_project"
-    assert "services" in config
-    assert config["services"]["root"] == "."
+    assert config["root"] == "."
+    assert config["strict"] is True
+    assert config["validate_paths"] is True
+    assert config["fail_on_warning"] is False
 
 
 @pytest.mark.cli
@@ -176,3 +184,22 @@ def test_init_project_no_prompt_on_first_init(make_project, cli_runner):
     assert "already initialized" not in result.stdout
     assert "Do you want to reinitialize" not in result.stdout
     assert "initialized" in result.stdout
+
+
+@pytest.mark.cli
+def test_init_project_adds_empty_line_after_table(make_project, cli_runner):
+    """Should add an empty line after the [tool.pyarchrules] table."""
+    project = make_project(with_pyproject=False)
+    project.write_minimal_pyproject()
+
+    result = cli_runner.invoke(app, ["init-project", str(project.root)])
+
+    assert result.exit_code == 0
+
+    # Read the raw TOML file content
+    content = project.pyproject.read_text(encoding="utf-8")
+
+    # Check that there's an empty line after the last property in [tool.pyarchrules]
+    # The tomlkit library adds a newline after tables
+    assert "\n\n" in content, "Expected empty line after TOML table"
+
