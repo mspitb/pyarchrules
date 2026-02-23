@@ -10,7 +10,6 @@ from pyarchrules.model.spec.service_spec import ServiceSpec
 class ProjectSpec(BaseModel):
     """Project configuration specification."""
 
-    strict: bool = True
     validate_paths: bool = True
-    fail_on_warning: bool = False
+    isolate_services: bool = False
     services: dict[str, ServiceSpec] = Field(default_factory=dict)

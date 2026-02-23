@@ -2,7 +2,7 @@
 
 import pytest
 
-from pyarchrules.core.rules.must_contain_folders_rule import MustContainFoldersRule
+from pyarchrules.core.rules.dsl.must_contain_folders_rule import MustContainFoldersRule
 from pyarchrules.model.spec import ServiceSpec
 
 

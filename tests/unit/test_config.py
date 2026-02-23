@@ -2,7 +2,7 @@
 
 import pytest
 
-from pyarchrules.config import PyArchConfig
+from pyarchrules.core.config import PyArchConfig
 from pyarchrules.core.errors import PyArchError
 
 
@@ -61,9 +61,7 @@ class TestPyArchConfigInitialization:
         assert "pyarchrules" in data["tool"]
         assert data["tool"]["pyarchrules"]["project_name"] == "test_project"
         assert data["tool"]["pyarchrules"]["root"] == "."
-        assert data["tool"]["pyarchrules"]["strict"] is True
-        assert data["tool"]["pyarchrules"]["validate_paths"] is True
-        assert data["tool"]["pyarchrules"]["fail_on_warning"] is False
+        assert data["tool"]["pyarchrules"]["isolate_services"] is True
 
     def test_initialize_with_custom_description(self, make_project):
         """Uses custom description when provided."""
@@ -200,7 +198,7 @@ class TestPyArchConfigMetadata:
 
         config = PyArchConfig.load(project.root)
 
-        assert config.get_project_name() == "my_project"
+        assert config._get_project_name() == "my_project"
 
     def test_get_description(self, make_project):
         """Returns description from config."""
@@ -211,7 +209,7 @@ class TestPyArchConfigMetadata:
 
         config = PyArchConfig.load(project.root)
 
-        assert config.get_description() == "My custom description"
+        assert config._get_description() == "My custom description"
 
 
 class TestPyArchConfigServiceNameValidation:

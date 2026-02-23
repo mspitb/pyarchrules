@@ -4,32 +4,32 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pyarchrules.core.registries.base_registry import BaseRegistry
+from pyarchrules.core.rules.rule_set import ServiceRuleSet
+
 if TYPE_CHECKING:
-    from pyarchrules.core.rules.rule_set import ServiceRuleSet
+    from pyarchrules.model.spec.project_spec import ProjectSpec
 
 
-class DSLRegistry:
-    """Registry for storing DSL-defined RuleSets per service."""
+class DSLRegistry(BaseRegistry[ServiceRuleSet]):
+    """Registry for DSL-defined :class:`~pyarchrules.core.rules.rule_set.ServiceRuleSet` objects.
 
-    def __init__(self):
-        self._service_rules: dict[str, ServiceRuleSet] = {}
+    One ``ServiceRuleSet`` is pre-registered per service defined in the
+    :class:`~pyarchrules.model.spec.project_spec.ProjectSpec`.
 
-    def register(self, service_name: str, rule_set: ServiceRuleSet) -> None:
-        """Register a RuleSet for a service."""
-        self._service_rules[service_name] = rule_set
+    Parameters
+    ----------
+    project_spec : ProjectSpec
+        Full project specification; one :class:`ServiceRuleSet` is created per service.
+    """
 
-    def get(self, service_name: str) -> ServiceRuleSet | None:
-        """Get the RuleSet for a service, or None if not registered."""
-        return self._service_rules.get(service_name)
+    def __init__(self, project_spec: ProjectSpec) -> None:
+        super().__init__()
+        for service_name, service_spec in project_spec.services.items():
+            self._store[service_name] = ServiceRuleSet(service_spec)
 
-    def get_all(self) -> dict[str, ServiceRuleSet]:
-        """Get all registered RuleSets."""
-        return dict(self._service_rules)
-
-    def has(self, service_name: str) -> bool:
-        """Check if a service has a registered RuleSet."""
-        return service_name in self._service_rules
-
-    def clear(self) -> None:
-        """Clear all registered RuleSets."""
-        self._service_rules.clear()
+    def _collect_violations(self) -> list:
+        violations = []
+        for rule_set in self._store.values():
+            violations.extend(rule_set._collect_violations())  # noqa
+        return violations

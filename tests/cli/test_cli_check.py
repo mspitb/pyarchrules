@@ -51,12 +51,7 @@ def test_check_command_with_service(make_project, cli_runner):
     project = make_project(
         with_pyproject=True,
         services={"api": "services/api"},
-        extra_config={
-            "root": ".",
-            "strict": True,
-            "validate_paths": True,
-            "fail_on_warning": False,
-        },
+        extra_config={"root": "."},
     )
 
     result = cli_runner.invoke(app, ["check", str(project.root)])
@@ -71,11 +66,7 @@ def test_check_command_verbose_output(make_project, cli_runner):
     project = make_project(
         with_pyproject=True,
         services={"api": "services/api"},
-        extra_config={
-            "root": ".",
-            "strict": True,
-            "validate_paths": True,
-        },
+        extra_config={"root": "."},
     )
 
     result = cli_runner.invoke(app, ["check", str(project.root), "--verbose"])
@@ -90,11 +81,7 @@ def test_check_command_quiet_output(make_project, cli_runner):
     project = make_project(
         with_pyproject=True,
         services={"api": "services/api"},
-        extra_config={
-            "root": ".",
-            "strict": True,
-            "validate_paths": True,
-        },
+        extra_config={"root": "."},
     )
 
     result = cli_runner.invoke(app, ["check", str(project.root), "--quiet"])
