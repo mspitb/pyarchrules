@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/mspitb/pyarchrules/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
-  <img src="https://img.shields.io/badge/status-beta%200.1.0b1-orange.svg" alt="Status: Beta">
+  <img src="https://img.shields.io/badge/status-beta%200.1.0b0-orange.svg" alt="Status: Beta">
 </p>
 
 # PyArchRules
