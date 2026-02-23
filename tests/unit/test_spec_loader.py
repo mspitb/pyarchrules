@@ -46,26 +46,6 @@ class TestSpecLoader:
     # Global options
     # -------------------------------------------------------------------------
 
-    def test_default_strict_is_true(self, make_project):
-        """Default strict is True when not specified."""
-        project = make_project(with_pyproject=True, services={"svc": "services/svc"})
-
-        spec = SpecLoader(project.root).load()
-
-        assert spec.strict is True
-
-    def test_parses_strict_false(self, make_project):
-        """strict = false is correctly parsed."""
-        project = make_project(
-            with_pyproject=True,
-            services={"svc": "services/svc"},
-            extra_config={"strict": False},
-        )
-
-        spec = SpecLoader(project.root).load()
-
-        assert spec.strict is False
-
     def test_default_validate_paths_is_true(self, make_project):
         """Default validate_paths is True when not specified."""
         project = make_project(with_pyproject=True, services={"svc": "services/svc"})

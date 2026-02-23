@@ -2,7 +2,7 @@ from pathlib import Path
 
 import typer
 
-from pyarchrules.config import PyArchConfig
+from pyarchrules.core.config import PyArchConfig
 from pyarchrules.core.errors import PyArchError
 from pyarchrules.pyarchrules import PyArchRules
 
@@ -65,9 +65,8 @@ def init_project(
     typer.secho("")
     typer.secho("Configuration:", fg=MAGENTA, bold=True)
     typer.secho("  • root = '.'", fg=BRIGHT_BLUE)
-    typer.secho("  • strict = true", fg=BRIGHT_BLUE)
     typer.secho("  • validate_paths = true", fg=BRIGHT_BLUE)
-    typer.secho("  • fail_on_warning = false", fg=BRIGHT_BLUE)
+    typer.secho("  • isolate_services = true", fg=BRIGHT_BLUE)
 
 
 @app.command("add-service")
@@ -204,8 +203,8 @@ def check(
         typer.echo(typer.style("⚠️  No services configured", fg=YELLOW))
         raise typer.Exit(code=0)
 
-    if strict is not None:
-        pyarchrules.project_spec.strict = strict
+    # strict defaults to True when not explicitly overridden via --no-strict
+    is_strict = strict if strict is not None else True
 
     typer.secho(f"🔍 Checking {len(pyarchrules.services)} service(s)...", fg=MAGENTA, bold=True)
     typer.secho("")
@@ -215,7 +214,7 @@ def check(
             typer.secho(f"📦 {service_name}", fg=BRIGHT_CYAN, bold=True)
             typer.secho(f"   Path: {service_spec.path}", fg=BRIGHT_BLUE)
 
-            service_rules = pyarchrules.linter_registry.get(service_name)
+            service_rules = pyarchrules.linter_rules_for(service_name)
             if service_rules:
                 rules_list = ", ".join(rule.rule_name for rule in service_rules)
                 typer.secho(f"   Rules: {rules_list}", fg=BLUE)
@@ -224,12 +223,7 @@ def check(
         typer.secho("")
 
     try:
-        result = pyarchrules.validate(
-            raise_on_violation=False,
-            verbose=False,
-            run_dsl=False,
-            run_linter=True,
-        )
+        result = pyarchrules.check_linter(raise_on_violation=False, verbose=False)
 
         error_count = result.error_count
         warning_count = result.warning_count
@@ -254,19 +248,13 @@ def check(
                     typer.secho(f"   Details: {violation.details}", fg=BLUE)
                 typer.secho("")
 
-            if pyarchrules.project_spec.strict and error_count > 0:
-                raise typer.Exit(code=1)
-            elif pyarchrules.project_spec.fail_on_warning and (
-                error_count > 0 or warning_count > 0
-            ):
+            if is_strict and error_count > 0:
                 raise typer.Exit(code=1)
             else:
                 raise typer.Exit(code=0)
         else:
             typer.secho("✨ All checks passed!", fg=GREEN, bold=True)
-            total_rules = sum(
-                len(rules) for rules in pyarchrules.linter_registry.get_all().values()
-            )
+            total_rules = pyarchrules.linter_rule_count
             typer.secho(
                 f"   Checked {total_rules} rule(s) across {len(pyarchrules.services)} service(s)",
                 fg=BRIGHT_CYAN,

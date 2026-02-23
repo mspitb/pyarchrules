@@ -4,18 +4,18 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/status-alpha%200.0.1a2-orange.svg" alt="Status Alpha"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
+  <a href="https://github.com/mspitb/pyarchrules"><img src="https://img.shields.io/badge/status-beta%200.1.0b0-orange.svg" alt="Status: Beta"></a>
 </p>
 
+**PyArchRules** enforces architecture rules in Python projects:
 
-## Features
-
-- 🏗️ **Structure validation** - enforce directory tree requirements
-- 🔗 **Dependency rules** - control module imports (e.g., `api -> domain`)
-- 🎯 **DSL & Config** - use Python DSL or TOML configuration
-- 🚀 **Zero setup** - works with `pyproject.toml`
-- 🔍 **CLI & API** - integrate into CI/CD or use programmatically
+- 🏗️ **Folder structure** — require exact directory layouts per service
+- 🔗 **Dependency rules** — control which internal packages may import from which
+- 🛡️ **Service isolation** — prevent cross-service imports in monorepos
+- 🐍 **Python DSL** — write rules in Python inside your test suite
+- ⚙️ **Zero extra config** — everything lives in `pyproject.toml`
+- 🚀 **CI-ready** — exit code `1` on any violation
 
 ## Installation
 
@@ -23,92 +23,77 @@
 pip install pyarchrules
 ```
 
-## Quick Start
+## Quick start
 
 ```bash
-# Initialize
+# 1. Add [tool.pyarchrules] to pyproject.toml
 pyarchrules init-project
 
-# Check architecture
+# 2. Register a service
+pyarchrules add-service backend src/backend
+
+# 3. Run the check
 pyarchrules check
 ```
 
-## Configuration Example
+## TOML configuration
 
 ```toml
 [tool.pyarchrules]
-project_name = "myapp"
+project_name     = "myapp"
+description      = "Architecture rules for this project"
+root             = "."
+validate_paths   = true
+isolate_services = true
 
 [tool.pyarchrules.services.backend]
-path = "src/backend"
-
-# Enforce directory structure
-tree = ["api", "domain", "infra"]
-tree_strict = true
-
-# Control dependencies (api can import from domain)
-dependencies = ["api -> domain", "domain -> infra"]
+path         = "src/backend"
+tree         = ["api", "domain", "infra"]
+tree_strict  = true
+dependencies = ["api -> domain", "domain -> infra", "* -> utils"]
 ```
 
-## Python API
+## Python DSL
 
 ```python
+# tests/test_architecture.py
 from pyarchrules import PyArchRules
 
-rules = PyArchRules()
-
-# DSL validation
-rules.for_service("backend") \
-    .must_contain_folders(["api", "domain"])
-
-result = rules.validate()
+def test_architecture():
+    rules = PyArchRules()
+    rules.for_service("backend") \
+        .must_contain_folders(["api", "domain", "infra"], allow_extra=False) \
+        .no_wildcard_imports() \
+        .no_circular_imports()
+    rules.validate()
 ```
 
-## CLI Commands
+## CLI commands
 
 | Command | Description |
 |---------|-------------|
-| `pyarchrules init-project` | Initialize configuration |
-| `pyarchrules check` | Validate architecture |
-| `pyarchrules add-service NAME PATH` | Add service |
-| `pyarchrules list-services` | List all services |
+| `init-project` | Initialise `[tool.pyarchrules]` in `pyproject.toml` |
+| `add-service NAME PATH` | Register a service |
+| `remove-service NAME` | Remove a service |
+| `list-services` | Show all configured services |
+| `check` | Validate architecture |
 
-## Use Cases
+## Documentation
 
-**Monorepos** - enforce boundaries between services
-```toml
-[tool.pyarchrules.services.auth]
-path = "services/auth"
-dependencies = ["auth -> shared"]
-```
+Full documentation: <https://mspitb.github.io/pyarchrules>
 
-**Clean Architecture** - validate layer dependencies
-```toml
-dependencies = [
-    "api -> application",
-    "application -> domain"
-]
-```
+## Contributing
 
-**Microservices** - ensure consistent structure
-```toml
-tree = ["api", "domain", "infrastructure"]
-tree_strict = true
-```
-
-## Development
+Contributions are welcome. Please open an issue before submitting a pull request for non-trivial changes.
 
 ```bash
-uv pip install -e ".[dev]"
+git clone https://github.com/mspitb/pyarchrules
+cd pyarchrules
+uv sync --all-extras
 make test
 make lint
 ```
 
-## Status
-
-⚠️ **Alpha** - API may change before 1.0 release
-
 ## License
 
 MIT
-

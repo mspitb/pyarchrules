@@ -1,2 +1,5 @@
+"""PyArchError — project-level exception."""
+
+
 class PyArchError(Exception):
-    pass
+    """Raised when a PyArchRules configuration or validation error occurs."""

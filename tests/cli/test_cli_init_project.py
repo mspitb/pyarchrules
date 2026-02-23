@@ -73,9 +73,7 @@ def test_init_project_replaces_existing_values(make_project, cli_runner):
     assert config["project_name"] == "test_project"  # From root path name
     assert config["description"] == "Architecture rules for this project"
     assert config["root"] == "."
-    assert config["strict"] is True
-    assert config["validate_paths"] is True
-    assert config["fail_on_warning"] is False
+    assert config["isolate_services"] is True
 
 
 @pytest.mark.cli
@@ -102,9 +100,7 @@ def test_init_project_creates_root_service(make_project, cli_runner):
     assert result.exit_code == 0
     config = project.get_pyarchrules_config()
     assert config["root"] == "."
-    assert config["strict"] is True
-    assert config["validate_paths"] is True
-    assert config["fail_on_warning"] is False
+    assert config["isolate_services"] is True
 
 
 @pytest.mark.cli
@@ -121,9 +117,7 @@ def test_init_project_replaces_existing_services(make_project, cli_runner):
     # Services should be REMOVED (replaced with fresh config)
     assert "services" not in config
     assert config["root"] == "."
-    assert config["strict"] is True
-    assert config["validate_paths"] is True
-    assert config["fail_on_warning"] is False
+    assert config["isolate_services"] is True
 
 
 @pytest.mark.cli
@@ -167,9 +161,7 @@ def test_init_project_force_skips_confirmation(make_project, cli_runner):
     config = project.get_pyarchrules_config()
     assert config["project_name"] == "test_project"
     assert config["root"] == "."
-    assert config["strict"] is True
-    assert config["validate_paths"] is True
-    assert config["fail_on_warning"] is False
+    assert config["isolate_services"] is True
 
 
 @pytest.mark.cli

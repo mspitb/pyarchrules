@@ -53,9 +53,8 @@ class PyArchConfig:
         pyarch["project_name"] = project_name
         pyarch["description"] = description
         pyarch["root"] = "."
-        pyarch["strict"] = True
         pyarch["validate_paths"] = True
-        pyarch["fail_on_warning"] = False
+        pyarch["isolate_services"] = True
 
         pyarch.add(tomlkit.nl())
 
@@ -113,26 +112,18 @@ class PyArchConfig:
 
         del services[name]
 
-    def get_project_name(self) -> str | None:
+    def _get_project_name(self) -> str | None:
         """Get the project name from config."""
         return self._get_pyarchrules().get("project_name")
 
-    def get_description(self) -> str | None:
+    def _get_description(self) -> str | None:
         """Get the description from config."""
         return self._get_pyarchrules().get("description")
 
-    def get_root(self) -> str:
+    def _get_root(self) -> str:
         """Get the root path from config."""
-        return self._get_pyarchrules().get("root", ".")
+        return self._get_pyarchrules().get("root", "..")
 
-    def get_validate_paths(self) -> bool:
+    def _get_validate_paths(self) -> bool:
         """Get the validate_paths setting from config."""
         return self._get_pyarchrules().get("validate_paths", True)
-
-    def get_strict(self) -> bool:
-        """Get the strict setting from config."""
-        return self._get_pyarchrules().get("strict", True)
-
-    def get_fail_on_warning(self) -> bool:
-        """Get the fail_on_warning setting from config."""
-        return self._get_pyarchrules().get("fail_on_warning", False)

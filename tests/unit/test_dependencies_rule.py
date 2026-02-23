@@ -72,7 +72,10 @@ class TestDependenciesRule:
         import_errors = [v for v in violations if "Forbidden import" in v.message]
         assert len(import_errors) == 0
 
-    def test_unspecified_imports_allowed(self, make_service_spec, tmp_test_dir, monkeypatch):
+    def test_covered_source_forbidden_reverse_import(
+        self, make_service_spec, tmp_test_dir, monkeypatch
+    ):
+        """domain -> api is forbidden when only api -> domain is declared."""
         monkeypatch.chdir(tmp_test_dir)
         (tmp_test_dir / "domain").mkdir()
         (tmp_test_dir / "api").mkdir()
@@ -82,7 +85,8 @@ class TestDependenciesRule:
         violations = DependenciesRule(spec).validate()
 
         import_errors = [v for v in violations if "Forbidden import" in v.message]
-        assert len(import_errors) == 0
+        assert len(import_errors) == 1
+        assert "domain" in import_errors[0].details["from_module"]
 
     def test_stdlib_imports_ignored(self, make_service_spec, tmp_test_dir, monkeypatch):
         monkeypatch.chdir(tmp_test_dir)

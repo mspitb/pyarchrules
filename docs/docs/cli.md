@@ -4,16 +4,6 @@
 pyarchrules --help
 ```
 
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `init-project` | Initialise `[tool.pyarchrules]` in `pyproject.toml` |
-| `add-service` | Register a new service |
-| `remove-service` | Remove a service |
-| `list-services` | Show all configured services |
-| `check` | Validate architecture against all rules |
-
 ---
 
 ## `init-project`
@@ -23,26 +13,14 @@ pyarchrules init-project [PROJECT_ROOT] [--force]
 ```
 
 Writes a default `[tool.pyarchrules]` section to `pyproject.toml`.
+Prompts for confirmation if a section already exists.
 
-| Argument / Option | Default | Description |
-|-------------------|---------|-------------|
-| `PROJECT_ROOT` | `.` | Path to the project root. |
-| `--force`, `-f` | false | Re-initialise without confirmation. |
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `PROJECT_ROOT` | `.` | Path to the project root directory. |
+| `--force`, `-f` | — | Re-initialise without confirmation. |
 
-**Output:**
-
-```
-✨ Successfully initialized!
-📝 /home/user/myapp/pyproject.toml
-
-Configuration:
-  • root = '.'
-  • strict = true
-  • validate_paths = true
-  • fail_on_warning = false
-```
-
-Exit codes: `0` success · `1` `pyproject.toml` not found
+**Exit codes:** `0` success · `1` `pyproject.toml` not found
 
 ---
 
@@ -52,21 +30,15 @@ Exit codes: `0` success · `1` `pyproject.toml` not found
 pyarchrules add-service [NAME] [PATH]
 ```
 
-Adds or updates a service. Prompts interactively if arguments are omitted.
+Registers or updates a service in `[tool.pyarchrules.services]`.
+Prompts interactively when arguments are omitted.
 
 ```bash
 pyarchrules add-service backend src/backend
-pyarchrules add-service          # interactive prompts
+pyarchrules add-service          # interactive
 ```
 
-**Output:**
-
-```
-➕ Added service 'backend'
-   Path: src/backend
-```
-
-Exit codes: `0` success · `1` invalid name or config not found
+**Exit codes:** `0` success · `1` invalid name or config not initialised
 
 ---
 
@@ -83,7 +55,7 @@ pyarchrules remove-service backend --force
 pyarchrules remove-service   # interactive list
 ```
 
-Exit codes: `0` success or cancelled · `1` service not found
+**Exit codes:** `0` success or cancelled · `1` service not found
 
 ---
 
@@ -93,45 +65,34 @@ Exit codes: `0` success or cancelled · `1` service not found
 pyarchrules list-services
 ```
 
-**Output:**
-
-```
-📦 Configured services (3):
-
-  • backend
-    src/backend
-  • auth
-    services/auth
-  • shared
-    services/shared
-```
+Prints all configured services and their paths.
 
 ---
 
 ## `check`
 
 ```bash
-pyarchrules check [PROJECT_ROOT] [--strict/--no-strict] [--verbose/--quiet]
+pyarchrules check [PROJECT_ROOT] [--verbose | --quiet]
 ```
 
-Validates architecture against all rules in `pyproject.toml`.
+Validates the project against all rules defined in `pyproject.toml`.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--strict` / `--no-strict` | from config | Override strict mode. |
-| `--verbose` / `--quiet` | `--verbose` | Show per-service rule detail. |
+| `PROJECT_ROOT` | `.` | Path to the project root directory. |
+| `--verbose` | on | Show per-service rule detail. |
+| `--quiet` | — | Suppress per-service output. |
 
 **Passing:**
 
 ```
 🔍 Checking 2 service(s)...
 
-📦 backend
-   Path: src/backend
-   Rules: tree_structure, internal_dependencies
+📦 backend  src/backend
+📦 shared   services/shared
 
 ✨ All checks passed!
-   Checked 2 rule(s) across 2 service(s)
+   Checked 4 rule(s) across 2 service(s)
 ```
 
 **Failing:**
@@ -139,7 +100,7 @@ Validates architecture against all rules in `pyproject.toml`.
 ```
 ❌  Validation failed!
 
-Found 1 error(s) and 0 warning(s):
+Found 1 error(s):
 
 ❌ [backend] tree_structure
    Missing required paths: ['domain']
@@ -150,7 +111,5 @@ Found 1 error(s) and 0 warning(s):
 | Code | Condition |
 |------|-----------|
 | `0` | All checks passed |
-| `0` | Violations present but `strict = false` |
-| `1` | Errors present and `strict = true` |
-| `1` | Warnings present and `fail_on_warning = true` |
-| `1` | Config could not be loaded |
+| `1` | One or more error violations found |
+| `1` | Configuration could not be loaded |

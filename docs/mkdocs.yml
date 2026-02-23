@@ -30,5 +30,3 @@ nav:
   - Configuration: configuration.md
   - CLI Reference: cli.md
   - Python DSL: dsl.md
-  - Use Cases: use-cases.md
-  - Changelog: changelog.md

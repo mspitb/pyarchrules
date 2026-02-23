@@ -1,12 +1,9 @@
 # Getting Started
 
-This guide walks you from a fresh install to your first passing architecture check
-in about five minutes.
+## Requirements
 
-## Prerequisites
-
-- Python **3.12** or newer
-- A project that uses `pyproject.toml`
+- Python 3.12+
+- A project with `pyproject.toml`
 
 ## Installation
 
@@ -14,37 +11,30 @@ in about five minutes.
 pip install pyarchrules
 ```
 
-Verify:
-
-```bash
-pyarchrules --help
-```
-
 ---
 
-## Step 1 — Initialize configuration
+## 1. Initialise
 
-Run from your project root (where `pyproject.toml` lives):
+Run from the directory that contains `pyproject.toml`:
 
 ```bash
 pyarchrules init-project
 ```
 
-This adds a `[tool.pyarchrules]` section with sensible defaults:
+This adds a `[tool.pyarchrules]` block with defaults:
 
 ```toml
 [tool.pyarchrules]
-project_name    = "myapp"
-description     = "Architecture rules for this project"
-root            = "."
-strict          = true
-validate_paths  = true
-fail_on_warning = false
+project_name     = "myapp"
+description      = "Architecture rules for this project"
+root             = "."
+validate_paths   = true
+isolate_services = true
 ```
 
 ---
 
-## Step 2 — Add a service
+## 2. Add a service
 
 A *service* is any directory you want to enforce rules on.
 
@@ -52,7 +42,7 @@ A *service* is any directory you want to enforce rules on.
 pyarchrules add-service backend src/backend
 ```
 
-Adds to `pyproject.toml`:
+Appends to `pyproject.toml`:
 
 ```toml
 [tool.pyarchrules.services.backend]
@@ -61,25 +51,23 @@ path = "src/backend"
 
 ---
 
-## Step 3 — Define rules
+## 3. Define rules
+
+Edit `pyproject.toml` to add the rules you need:
 
 ```toml
 [tool.pyarchrules.services.backend]
-path = "src/backend"
-
-# Required directories
-tree = ["api", "domain", "infra"]
-
-# No extra directories allowed
-tree_strict = true
-
-# Import direction rules
-dependencies = ["api -> domain", "domain -> infra"]
+path         = "src/backend"
+tree         = ["api", "domain", "infra"]
+tree_strict  = true
+dependencies = ["api -> domain", "domain -> infra", "* -> utils"]
 ```
+
+See [Configuration](configuration.md) for the full list of options.
 
 ---
 
-## Step 4 — Run the check
+## 4. Run the check
 
 ```bash
 pyarchrules check
@@ -90,9 +78,7 @@ pyarchrules check
 ```
 🔍 Checking 1 service(s)...
 
-📦 backend
-   Path: src/backend
-   Rules: tree_structure, internal_dependencies
+📦 backend  src/backend
 
 ✨ All checks passed!
    Checked 2 rule(s) across 1 service(s)
@@ -103,26 +89,28 @@ pyarchrules check
 ```
 ❌  Validation failed!
 
-Found 1 error(s) and 0 warning(s):
+Found 1 error(s):
 
 ❌ [backend] tree_structure
    Missing required paths: ['domain']
 ```
 
+Exit code `1` is returned on any error.
+
 ---
 
-## Step 5 — Add to CI
+## 5. CI integration
 
 ```yaml
 - name: Architecture check
   run: pyarchrules check
 ```
 
-Exit code `1` is returned on any violation when `strict = true`.
-
 ---
 
-## Using the Python API
+## Python API
+
+Rules can also be written in Python, typically inside pytest:
 
 ```python
 # tests/test_architecture.py
@@ -130,15 +118,11 @@ from pyarchrules import PyArchRules
 
 def test_architecture():
     rules = PyArchRules()
-    rules.for_service("backend").must_contain_folders(["api", "domain", "infra"])
-    rules.validate()  # raises PyArchError on violation
+    rules.for_service("backend") \
+        .must_contain_folders(["api", "domain", "infra"], allow_extra=False) \
+        .no_wildcard_imports() \
+        .no_circular_imports()
+    rules.validate()
 ```
 
----
-
-## Next Steps
-
-- [Configuration](configuration.md)
-- [CLI Reference](cli.md)
-- [Python DSL](dsl.md)
-- [Use Cases](use-cases.md)
+See [Python DSL](dsl.md) for all available rules.
