@@ -29,7 +29,7 @@ def collect_class_names(path: Path) -> list[str]:
     except (SyntaxError, OSError):
         return []
 
-    return [node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]
+    return [node.name for node in tree.body if isinstance(node, ast.ClassDef)]
 
 
 def matches_pattern(name: str, pattern: str) -> bool:

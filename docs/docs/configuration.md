@@ -1,4 +1,4 @@
-﻿# Configuration
+# Configuration
 
 All configuration lives in `pyproject.toml` under `[tool.pyarchrules]`.
 

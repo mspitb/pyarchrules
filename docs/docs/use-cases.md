@@ -1,4 +1,4 @@
-﻿﻿# Use Cases
+﻿# Use Cases
 
 Practical patterns for the most common architectural challenges.
 
