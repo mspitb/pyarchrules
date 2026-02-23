@@ -1,4 +1,4 @@
-﻿# Use Cases
+﻿﻿# Use Cases
 
 Practical patterns for the most common architectural challenges.
 
@@ -30,7 +30,7 @@ my-platform/
 ```toml
 [tool.pyarchrules]
 project_name = "my-platform"
-strict = true
+isolate_services = true
 
 [tool.pyarchrules.services.auth]
 path                         = "services/auth"
@@ -108,7 +108,7 @@ def test_clean_architecture():
 ```toml
 [tool.pyarchrules]
 project_name = "platform"
-strict = true
+isolate_services = true
 
 [tool.pyarchrules.services.shared]
 path = "shared"
