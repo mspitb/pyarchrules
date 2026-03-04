@@ -5,22 +5,22 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
-  <a href="https://github.com/mspitb/pyarchrules"><img src="https://img.shields.io/badge/status-beta%200.1.0b0-orange.svg" alt="Status: Beta"></a>
+  <a href="https://github.com/mspitb/pyarchrules"><img src="https://img.shields.io/badge/status-beta%200.1.0b1-orange.svg" alt="Status: Beta"></a>
   <a href="https://mspitb.github.io/pyarchrules/"><img src="https://img.shields.io/badge/docs-mkdocs-blue.svg" alt="Documentation"></a>
 </p>
 
-> ⚠️ **This is a pre-release (beta) version.** APIs may change before the stable `1.0` release.
+> ⚠️ **Pre-release (beta).** APIs may change before the stable `1.0` release.
 
-📚 **[Full Documentation](https://mspitb.github.io/pyarchrules/)** — Getting Started, Configuration, CLI Reference, Use Cases
+📚 **[Full Documentation](https://mspitb.github.io/pyarchrules/)** — Getting Started · Configuration · CLI Reference · Use Cases
 
 **PyArchRules** enforces architecture rules in Python projects:
 
-- 🏗️ **Folder structure** — require exact directory layouts per service
-- 🔗 **Dependency rules** — control which internal packages may import from which
-- 🛡️ **Service isolation** — prevent cross-service imports in monorepos
-- 🐍 **Python DSL** — write rules in Python inside your test suite
-- ⚙️ **Zero extra config** — everything lives in `pyproject.toml`
-- 🚀 **CI-ready** — exit code `1` on any violation
+- 🏗️ Folder structure validation per service
+- 🔗 Internal dependency direction control
+- 🛡️ Cross-service import isolation for monorepos
+- 🐍 Python DSL for writing rules inside your test suite
+- ⚙️ Zero extra config — everything in `pyproject.toml`
+- 🚀 CI-ready — exit code `1` on any violation
 
 ## Installation
 
@@ -45,8 +45,6 @@ pyarchrules check
 
 ```toml
 [tool.pyarchrules]
-project_name     = "myapp"
-description      = "Architecture rules for this project"
 root             = "."
 validate_paths   = true
 isolate_services = true
@@ -54,7 +52,7 @@ isolate_services = true
 [tool.pyarchrules.services.backend]
 path         = "src/backend"
 tree         = ["api", "domain", "infra"]
-tree_strict  = true
+tree_mode    = "strict"
 dependencies = ["api -> domain", "domain -> infra", "* -> utils"]
 ```
 
@@ -83,21 +81,9 @@ def test_architecture():
 | `list-services` | Show all configured services |
 | `check` | Validate architecture |
 
-## Documentation
-
-Full documentation: <https://mspitb.github.io/pyarchrules>
-
 ## Contributing
 
-Contributions are welcome. Please open an issue before submitting a pull request for non-trivial changes.
-
-```bash
-git clone https://github.com/mspitb/pyarchrules
-cd pyarchrules
-uv sync --all-extras
-make test
-make lint
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
