@@ -7,12 +7,10 @@ from pathlib import Path
 
 from pyarchrules.core.errors import PyArchError
 from pyarchrules.model.spec.project_spec import ProjectSpec
-from pyarchrules.model.spec.service_spec import ServiceSpec
+from pyarchrules.model.spec.service_spec import ServiceSpec, TreeMode
 
 _KNOWN_PROJECT_KEYS = frozenset(
     {
-        "project_name",
-        "description",
         "root",
         "validate_paths",
         "isolate_services",
@@ -25,7 +23,7 @@ _KNOWN_SERVICE_KEYS = frozenset(
         "path",
         "allowed_service_dependencies",
         "tree",
-        "tree_strict",
+        "tree_mode",
         "tree_allow_files",
         "dependencies",
         "no_wildcard_imports",
@@ -118,7 +116,7 @@ class SpecLoader:
             rel_path = svc_data
             allowed_deps: list[str] = []
             tree_data: list[str] = []
-            tree_strict: bool = False
+            tree_mode: TreeMode = TreeMode.EXISTS
             tree_allow_files: bool = True
             dependencies: list[str] = []
             no_wildcard_imports: bool | list[str] = False
@@ -135,7 +133,14 @@ class SpecLoader:
                 raise PyArchError(f"Service '{name}' must have 'path' key")
             allowed_deps = svc_data.get("allowed_service_dependencies", [])
             tree_data = svc_data.get("tree", [])
-            tree_strict = svc_data.get("tree_strict", False)
+            raw_mode = svc_data.get("tree_mode", TreeMode.EXISTS.value)
+            try:
+                tree_mode = TreeMode(raw_mode)
+            except ValueError:
+                valid = ", ".join(f'"{m.value}"' for m in TreeMode)
+                raise PyArchError(
+                    f"Service '{name}': invalid tree_mode '{raw_mode}'. Valid values: {valid}"
+                )
             tree_allow_files = svc_data.get("tree_allow_files", True)
             dependencies = svc_data.get("dependencies", [])
             no_wildcard_imports = svc_data.get("no_wildcard_imports", False)
@@ -157,7 +162,7 @@ class SpecLoader:
             project_root=root_path,
             allowed_service_dependencies=allowed_deps,
             tree=tree_data if isinstance(tree_data, list) else [],
-            tree_strict=tree_strict,
+            tree_mode=tree_mode,
             tree_allow_files=tree_allow_files,
             dependencies=dependencies,
             no_wildcard_imports=no_wildcard_imports,

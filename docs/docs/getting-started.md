@@ -25,8 +25,6 @@ This adds a `[tool.pyarchrules]` block with defaults:
 
 ```toml
 [tool.pyarchrules]
-project_name     = "myapp"
-description      = "Architecture rules for this project"
 root             = "."
 validate_paths   = true
 isolate_services = true
@@ -59,7 +57,7 @@ Edit `pyproject.toml` to add the rules you need:
 [tool.pyarchrules.services.backend]
 path         = "src/backend"
 tree         = ["api", "domain", "infra"]
-tree_strict  = true
+tree_mode    = "strict"
 dependencies = ["api -> domain", "domain -> infra", "* -> utils"]
 ```
 

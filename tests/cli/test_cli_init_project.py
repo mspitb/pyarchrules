@@ -31,8 +31,8 @@ def test_init_project_creates_tool_section(make_project, cli_runner):
 
 
 @pytest.mark.cli
-def test_init_project_adds_project_name(make_project, cli_runner):
-    """Should add project_name to [tool.pyarchrules]."""
+def test_init_project_adds_default_keys(make_project, cli_runner):
+    """Should add root, validate_paths and isolate_services to [tool.pyarchrules]."""
     project = make_project(with_pyproject=False, name="my_awesome_project")
     project.write_minimal_pyproject()
 
@@ -40,12 +40,16 @@ def test_init_project_adds_project_name(make_project, cli_runner):
 
     assert result.exit_code == 0
     config = project.get_pyarchrules_config()
-    assert config["project_name"] == "my_awesome_project"
+    assert "project_name" not in config
+    assert "description" not in config
+    assert config["root"] == "."
+    assert config["validate_paths"] is True
+    assert config["isolate_services"] is True
 
 
 @pytest.mark.cli
-def test_init_project_adds_description(make_project, cli_runner):
-    """Should add description to [tool.pyarchrules]."""
+def test_init_project_does_not_add_deprecated_fields(make_project, cli_runner):
+    """Should not add deprecated project_name or description fields."""
     project = make_project(with_pyproject=False)
     project.write_minimal_pyproject()
 
@@ -53,16 +57,16 @@ def test_init_project_adds_description(make_project, cli_runner):
 
     assert result.exit_code == 0
     config = project.get_pyarchrules_config()
-    assert "description" in config
-    assert "Architecture rules" in config["description"]
+    assert "project_name" not in config
+    assert "description" not in config
 
 
 @pytest.mark.cli
 def test_init_project_replaces_existing_values(make_project, cli_runner):
-    """Should replace existing project_name and description with fresh values."""
+    """Should replace existing configuration with fresh default values."""
     project = make_project(
         with_pyproject=True,
-        extra_config={"project_name": "existing_name", "description": "existing description"},
+        extra_config={"root": "./src", "validate_paths": False},
     )
 
     result = cli_runner.invoke(app, ["init-project", str(project.root)], input="y\n")
@@ -70,8 +74,8 @@ def test_init_project_replaces_existing_values(make_project, cli_runner):
     assert result.exit_code == 0
     config = project.get_pyarchrules_config()
     # Values should be replaced with defaults
-    assert config["project_name"] == "test_project"  # From root path name
-    assert config["description"] == "Architecture rules for this project"
+    assert "project_name" not in config
+    assert "description" not in config
     assert config["root"] == "."
     assert config["isolate_services"] is True
 
@@ -149,7 +153,7 @@ def test_init_project_cancels_on_no_confirmation(make_project, cli_runner):
 @pytest.mark.cli
 def test_init_project_force_skips_confirmation(make_project, cli_runner):
     """Should skip confirmation prompt when --force flag is used."""
-    project = make_project(with_pyproject=True, extra_config={"project_name": "old_name"})
+    project = make_project(with_pyproject=True, extra_config={"root": "./src"})
 
     result = cli_runner.invoke(app, ["init-project", "--force", str(project.root)])
 
@@ -157,9 +161,9 @@ def test_init_project_force_skips_confirmation(make_project, cli_runner):
     # Should not show warning or prompt
     assert "already initialized" not in result.stdout
     assert "Do you want to reinitialize" not in result.stdout
-    # Should be reinitialized
+    # Should be reinitialized with defaults
     config = project.get_pyarchrules_config()
-    assert config["project_name"] == "test_project"
+    assert "project_name" not in config
     assert config["root"] == "."
     assert config["isolate_services"] is True
 

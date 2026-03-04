@@ -42,16 +42,11 @@ class PyArchConfig:
         """Check if [tool.pyarchrules] section exists."""
         return "pyarchrules" in self._doc.get("tool", {})
 
-    def initialize(self, project_name: str, description: str | None = None) -> None:
+    def initialize(self) -> None:
         """Initialize [tool.pyarchrules] section with default values."""
-        if description is None:
-            description = "Architecture rules for this project"
-
         tool = self._doc.setdefault("tool", tomlkit.table())
 
         pyarch = tomlkit.table()
-        pyarch["project_name"] = project_name
-        pyarch["description"] = description
         pyarch["root"] = "."
         pyarch["validate_paths"] = True
         pyarch["isolate_services"] = True
@@ -111,19 +106,3 @@ class PyArchConfig:
             raise PyArchError(f"Service '{name}' not found")
 
         del services[name]
-
-    def _get_project_name(self) -> str | None:
-        """Get the project name from config."""
-        return self._get_pyarchrules().get("project_name")
-
-    def _get_description(self) -> str | None:
-        """Get the description from config."""
-        return self._get_pyarchrules().get("description")
-
-    def _get_root(self) -> str:
-        """Get the root path from config."""
-        return self._get_pyarchrules().get("root", "..")
-
-    def _get_validate_paths(self) -> bool:
-        """Get the validate_paths setting from config."""
-        return self._get_pyarchrules().get("validate_paths", True)

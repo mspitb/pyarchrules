@@ -8,8 +8,6 @@ All configuration lives in `pyproject.toml` under `[tool.pyarchrules]`.
 
 ```toml
 [tool.pyarchrules]
-project_name     = "myapp"
-description      = "Architecture rules for this project"
 root             = "."
 validate_paths   = true
 isolate_services = true
@@ -17,8 +15,6 @@ isolate_services = true
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `project_name` | string | — | Human-readable project name. |
-| `description` | string | `""` | Optional description. |
 | `root` | string | `"."` | Root directory, relative to `pyproject.toml`. Service paths resolve from here. |
 | `validate_paths` | bool | `true` | Raise an error at load time if a service path does not exist on disk. |
 | `isolate_services` | bool | `false` | Enforce that services do not import each other unless `shared = true`. |
@@ -46,30 +42,73 @@ shared = false
 [tool.pyarchrules.services.backend]
 path             = "src/backend"
 tree             = ["api", "domain", "infra", "api/model"]
-tree_strict      = true
+tree_mode        = "strict"
 tree_allow_files = true
 ```
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `tree` | list[string] | `[]` | Paths that **must** exist inside the service. Supports nested paths (`"api/model"`). |
-| `tree_strict` | bool | `false` | No directories other than those listed are allowed. |
-| `tree_allow_files` | bool | `true` | When strict, regular files (`.py`, etc.) are still permitted at any level. |
+| `tree_mode` | string | `"exists"` | Controls how strictly the tree is validated. See modes below. |
+| `tree_allow_files` | bool | `true` | In `strict` / `exact` mode, loose files (`.py`, etc.) are always tolerated. |
 
-**Example violation (strict mode):**
+### `tree_mode` values
 
+| Value | Behaviour |
+|-------|-----------|
+| `"exists"` | *(default)* Only checks that every declared path exists. Extra directories anywhere are ignored. |
+| `"strict"` | Every level covered by `tree` (root + all intermediate parents up to the deepest declared path) must contain only the declared children. Leaf directories are not inspected internally. |
+| `"exact"` | Same as `strict`, plus every leaf directory is walked recursively. Any subdirectory inside a leaf that is not declared in `tree` is reported. Full one-to-one match of the entire tree. |
+
+**Example — `"strict"` mode**:
+
+Config:
+```toml
+tree      = ["api", "domain"]
+tree_mode = "strict"
+```
+
+Disk:
 ```
 services/auth/
-├── api/
-├── domain/
-├── infra/
-└── utils/      ← not listed in tree!
+├── api/       ← declared ✓
+├── domain/    ← declared ✓
+├── infra/     ← not in tree!
+└── utils/     ← not in tree!
 ```
 
+Result:
 ```
-❌ [auth] tree_structure
-   Unexpected directories in strict mode: ['utils']
+⚠️  [auth] tree_structure
+   Extra items in '.' (tree_mode=strict): ['infra', 'utils']
 ```
+
+**Example — `"exact"` mode** (same as strict + checks inside leaf directories):
+
+Config:
+```toml
+tree      = ["api", "api/model", "domain"]
+tree_mode = "exact"
+```
+
+Disk:
+```
+services/auth/
+├── api/           ← non-leaf (has child api/model in tree)
+│   ├── model/     ← declared ✓
+│   └── internal/  ← not in tree! caught by strict part
+└── domain/        ← leaf (no children declared in tree)
+    └── core/      ← not in tree! caught by exact (leaf walk)
+```
+
+Result:
+```
+⚠️  [auth] tree_structure
+   Extra items in 'api' (tree_mode=exact): ['internal']
+   Undeclared directories inside leaf dirs (tree_mode=exact): ['domain/core']
+```
+
+> **Note:** `"strict"` checks all levels explicitly covered by `tree`. `"exact"` additionally walks inside every leaf directory for a full one-to-one match.
 
 ---
 
@@ -150,20 +189,20 @@ shared = true
 
 ```toml
 [tool.pyarchrules]
-project_name     = "ecommerce"
+root             = "."
 validate_paths   = true
 isolate_services = true
 
 [tool.pyarchrules.services.catalog]
 path         = "services/catalog"
 tree         = ["api", "domain", "infra"]
-tree_strict  = true
+tree_mode    = "strict"
 dependencies = ["api -> domain", "domain -> infra", "* -> utils"]
 
 [tool.pyarchrules.services.orders]
 path                         = "services/orders"
 tree                         = ["api", "domain", "infra"]
-tree_strict                  = true
+tree_mode                    = "strict"
 dependencies                 = ["api -> domain", "domain -> infra", "* -> utils"]
 allowed_service_dependencies = ["catalog", "shared"]
 

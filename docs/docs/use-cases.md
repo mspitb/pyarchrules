@@ -29,33 +29,33 @@ my-platform/
 
 ```toml
 [tool.pyarchrules]
-project_name = "my-platform"
 isolate_services = true
 
 [tool.pyarchrules.services.auth]
 path                         = "services/auth"
 tree                         = ["api", "domain", "infra"]
-tree_strict                  = true
+tree_mode                    = "strict"
 dependencies                 = ["api -> domain", "domain -> infra"]
 allowed_service_dependencies = ["shared"]
 
 [tool.pyarchrules.services.catalog]
 path                         = "services/catalog"
 tree                         = ["api", "domain", "infra"]
-tree_strict                  = true
+tree_mode                    = "strict"
 dependencies                 = ["api -> domain", "domain -> infra"]
 allowed_service_dependencies = ["shared"]
 
 [tool.pyarchrules.services.shared]
-path = "services/shared"
-tree = ["models", "utils"]
+path   = "services/shared"
+tree   = ["models", "utils"]
+shared = true
 ```
 
 What this enforces:
 
-- `auth` and `catalog` must each contain exactly `api`, `domain`, and `infra`.
-- Internal imports follow `api -> domain -> infra`.
-- `auth` and `catalog` may import from `shared`, but not from each other.
+- `auth` and `catalog` must each contain **exactly** `api`, `domain`, and `infra` (`tree_mode = "strict"`).
+- Internal imports follow `api → domain → infra`.
+- `auth` and `catalog` may import from `shared` (`shared = true`), but not from each other (`isolate_services = true`).
 
 ---
 
@@ -77,7 +77,7 @@ src/backend/
 [tool.pyarchrules.services.backend]
 path         = "src/backend"
 tree         = ["api", "application", "domain", "infra"]
-tree_strict  = true
+tree_mode    = "strict"
 dependencies = [
     "api         -> application",
     "application -> domain",
@@ -107,27 +107,29 @@ def test_clean_architecture():
 
 ```toml
 [tool.pyarchrules]
-project_name = "platform"
 isolate_services = true
 
 [tool.pyarchrules.services.shared]
-path = "shared"
-tree = ["models", "utils"]
+path   = "shared"
+tree   = ["models", "utils"]
+shared = true
 
 [tool.pyarchrules.services.orders]
 path                         = "orders"
 tree                         = ["api", "domain", "infra"]
-tree_strict                  = true
+tree_mode                    = "strict"
 dependencies                 = ["api -> domain", "domain -> infra"]
 allowed_service_dependencies = ["shared"]
 
 [tool.pyarchrules.services.payments]
 path                         = "payments"
 tree                         = ["api", "domain", "infra"]
-tree_strict                  = true
+tree_mode                    = "strict"
 dependencies                 = ["api -> domain", "domain -> infra"]
 allowed_service_dependencies = ["shared"]
 ```
+
+`shared = true` allows `orders` and `payments` to import from `shared` while keeping them isolated from each other.
 
 ---
 
