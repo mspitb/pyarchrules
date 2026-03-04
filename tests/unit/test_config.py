@@ -48,43 +48,33 @@ class TestPyArchConfigInitialization:
         assert config.is_initialized() is True
 
     def test_initialize_creates_config_section(self, make_project):
-        """Creates [tool.pyarchrules] section."""
+        """Creates [tool.pyarchrules] section with default keys."""
         project = make_project(with_pyproject=False)
         project.write_minimal_pyproject()
 
         config = PyArchConfig.load(project.root)
-        config.initialize(project_name="test_project")
+        config.initialize()
         config.save()
 
         data = project.read_pyproject()
         assert "tool" in data
         assert "pyarchrules" in data["tool"]
-        assert data["tool"]["pyarchrules"]["project_name"] == "test_project"
+        assert "project_name" not in data["tool"]["pyarchrules"]
+        assert "description" not in data["tool"]["pyarchrules"]
         assert data["tool"]["pyarchrules"]["root"] == "."
         assert data["tool"]["pyarchrules"]["isolate_services"] is True
 
-    def test_initialize_with_custom_description(self, make_project):
-        """Uses custom description when provided."""
-        project = make_project(with_pyproject=False)
-        project.write_minimal_pyproject()
-
-        config = PyArchConfig.load(project.root)
-        config.initialize(project_name="test_project", description="Custom description")
-        config.save()
-
-        data = project.read_pyproject()
-        assert data["tool"]["pyarchrules"]["description"] == "Custom description"
-
     def test_initialize_replaces_existing_config(self, make_project):
         """Replaces existing config when called again."""
-        project = make_project(with_pyproject=True, extra_config={"project_name": "old_name"})
+        project = make_project(with_pyproject=True, extra_config={"root": "./src"})
 
         config = PyArchConfig.load(project.root)
-        config.initialize(project_name="new_name")
+        config.initialize()
         config.save()
 
         data = project.read_pyproject()
-        assert data["tool"]["pyarchrules"]["project_name"] == "new_name"
+        assert "project_name" not in data["tool"]["pyarchrules"]
+        assert data["tool"]["pyarchrules"]["root"] == "."
 
 
 class TestPyArchConfigServices:
@@ -116,7 +106,7 @@ class TestPyArchConfigServices:
         project.write_minimal_pyproject()
 
         config = PyArchConfig.load(project.root)
-        config.initialize(project_name="test")
+        config.initialize()
 
         # After initialization, no services table exists - services are added separately
         assert config.get_services() == {}
@@ -190,26 +180,31 @@ class TestPyArchConfigServices:
 
 
 class TestPyArchConfigMetadata:
-    """Tests for PyArchConfig metadata (project_name, description)."""
+    """Tests for PyArchConfig metadata fields (deprecated fields are no longer generated)."""
 
-    def test_get_project_name(self, make_project):
-        """Returns project name from config."""
-        project = make_project(with_pyproject=True, extra_config={"project_name": "my_project"})
-
-        config = PyArchConfig.load(project.root)
-
-        assert config._get_project_name() == "my_project"
-
-    def test_get_description(self, make_project):
-        """Returns description from config."""
-        project = make_project(
-            with_pyproject=True,
-            extra_config={"description": "My custom description"},
-        )
+    def test_initialize_does_not_include_project_name(self, make_project):
+        """initialize() must not write the deprecated project_name field."""
+        project = make_project(with_pyproject=False)
+        project.write_minimal_pyproject()
 
         config = PyArchConfig.load(project.root)
+        config.initialize()
+        config.save()
 
-        assert config._get_description() == "My custom description"
+        data = project.read_pyproject()
+        assert "project_name" not in data["tool"]["pyarchrules"]
+
+    def test_initialize_does_not_include_description(self, make_project):
+        """initialize() must not write the deprecated description field."""
+        project = make_project(with_pyproject=False)
+        project.write_minimal_pyproject()
+
+        config = PyArchConfig.load(project.root)
+        config.initialize()
+        config.save()
+
+        data = project.read_pyproject()
+        assert "description" not in data["tool"]["pyarchrules"]
 
 
 class TestPyArchConfigServiceNameValidation:

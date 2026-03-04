@@ -6,7 +6,10 @@ from pyarchrules.core.config import PyArchConfig
 from pyarchrules.core.errors import PyArchError
 from pyarchrules.pyarchrules import PyArchRules
 
-app = typer.Typer(help="PyArchRules - Architecture testing for Python projects")
+app = typer.Typer(
+    help="PyArchRules - Architecture testing for Python projects",
+    no_args_is_help=True,
+)
 
 # Color scheme matching the logo
 BLUE = typer.colors.BLUE
@@ -18,14 +21,6 @@ BRIGHT_BLUE = typer.colors.BRIGHT_BLUE
 BRIGHT_CYAN = typer.colors.BRIGHT_CYAN
 MAGENTA = typer.colors.MAGENTA
 BRIGHT_MAGENTA = typer.colors.BRIGHT_MAGENTA
-
-
-@app.callback(invoke_without_command=True)
-def callback(ctx: typer.Context):
-    """PyArchRules CLI."""
-    if ctx.invoked_subcommand is None:
-        typer.secho(ctx.get_help(), fg=BRIGHT_BLUE)
-        raise typer.Exit(0)
 
 
 @app.command("init-project")
@@ -56,7 +51,7 @@ def init_project(
             typer.secho("⏹️  Cancelled", fg=CYAN)
             raise typer.Exit(code=0)
 
-    config.initialize(project_name=root_path.name)
+    config.initialize()
     config.save()
 
     action = "reinitialized" if already_initialized else "initialized"

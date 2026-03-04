@@ -128,15 +128,16 @@ dependencies = ["api -> domain", "domain -> infra"]
         [tool.pyarchrules.services.svc]
         path = "services/svc"
         tree = ["api", "domain", "infra", "api/v1"]
-        tree_strict = true
+        tree_mode = "strict"
         tree_allow_files = false
         """
         (root / "pyproject.toml").write_text(toml_content, encoding="utf-8")
 
+        from pyarchrules.model.spec.service_spec import TreeMode
         spec = SpecLoader(root).load()
 
         assert spec.services["svc"].tree == ["api", "domain", "infra", "api/v1"]
-        assert spec.services["svc"].tree_strict is True
+        assert spec.services["svc"].tree_mode == TreeMode.STRICT
         assert spec.services["svc"].tree_allow_files is False
 
     def test_parses_tree_allow_files_default(self, tmp_test_dir):
@@ -151,7 +152,7 @@ dependencies = ["api -> domain", "domain -> infra"]
         [tool.pyarchrules.services.svc]
         path = "services/svc"
         tree = ["api"]
-        tree_strict = true
+        tree_mode = "exact"
         """
         (root / "pyproject.toml").write_text(toml_content, encoding="utf-8")
 

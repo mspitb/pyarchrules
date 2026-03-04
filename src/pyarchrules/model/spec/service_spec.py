@@ -2,9 +2,31 @@
 
 from __future__ import annotations
 
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, Field
+
+
+class TreeMode(StrEnum):
+    """Controls how strictly the directory tree is validated.
+
+    exists
+        Only checks that every path listed in ``tree`` exists on disk.
+        Anything extra is silently ignored.
+    strict
+        Every level covered by ``tree`` (root + all intermediate parents up to
+        the deepest declared path) must contain **only** the declared children.
+        Leaf directories are not inspected internally.
+    exact
+        Same as ``strict``, plus every leaf directory is walked recursively.
+        Any subdirectory inside a leaf that is not declared in ``tree``
+        is reported.  Full one-to-one match of the entire tree.
+    """
+
+    EXISTS = "exists"
+    STRICT = "strict"
+    EXACT = "exact"
 
 
 class ServiceSpec(BaseModel):
@@ -22,10 +44,13 @@ class ServiceSpec(BaseModel):
         Other service names this service is allowed to depend on.
     tree : list[str]
         Required directory/file paths relative to the service root.
-    tree_strict : bool
-        When ``True``, no extra items are allowed beyond those listed in *tree*.
+    tree_mode : TreeMode
+        Controls how strictly the tree is validated.
+        ``"exists"`` (default) — only presence is checked.
+        ``"strict"`` — no extra dirs allowed at covered levels.
+        ``"full"`` — strict + recurse into leaf directories.
     tree_allow_files : bool
-        When *tree_strict* is ``True``, still permit loose files (not folders).
+        In ``strict`` / ``full`` mode, still permit loose files (not folders).
     dependencies : list[str]
         Internal import-flow rules, e.g. ``["api -> domain"]``.
     no_wildcard_imports : bool or list[str]
@@ -42,7 +67,7 @@ class ServiceSpec(BaseModel):
     project_root: Path
     allowed_service_dependencies: list[str] = Field(default_factory=list)
     tree: list[str] = Field(default_factory=list)
-    tree_strict: bool = False
+    tree_mode: TreeMode = TreeMode.EXISTS
     tree_allow_files: bool = True
     dependencies: list[str] = Field(default_factory=list)
     no_wildcard_imports: bool | list[str] = False
