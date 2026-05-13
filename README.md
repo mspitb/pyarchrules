@@ -5,81 +5,92 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
-  <a href="https://github.com/mspitb/pyarchrules"><img src="https://img.shields.io/badge/status-beta%200.1.0b1-orange.svg" alt="Status: Beta"></a>
+  <a href="https://github.com/mspitb/pyarchrules"><img src="https://img.shields.io/badge/status-beta%200.1.0b2-orange.svg" alt="Status: Beta"></a>
   <a href="https://mspitb.github.io/pyarchrules/"><img src="https://img.shields.io/badge/docs-mkdocs-blue.svg" alt="Documentation"></a>
 </p>
 
-> ⚠️ **Pre-release (beta).** APIs may change before the stable `1.0` release.
+# PyArchRules
 
-📚 **[Full Documentation](https://mspitb.github.io/pyarchrules/)** — Getting Started · Configuration · CLI Reference · Use Cases
+**Architecture linter for Python.**
 
-**PyArchRules** enforces architecture rules in Python projects:
+Define your project's folder structure and import rules in `pyproject.toml`
+(or in Python) and enforce them in CI or from your test suite.
 
-- 🏗️ Folder structure validation per service
-- 🔗 Internal dependency direction control
-- 🛡️ Cross-service import isolation for monorepos
-- 🐍 Python DSL for writing rules inside your test suite
-- ⚙️ Zero extra config — everything in `pyproject.toml`
-- 🚀 CI-ready — exit code `1` on any violation
+📚 **[Full documentation](https://mspitb.github.io/pyarchrules/)**
 
-## Installation
+## Key features
+
+- Folder structure validation.
+- Directional dependency rules between modules.
+- Isolation between services and layers.
+- Circular import detection.
+
+## Quick start
+
+### 1. Install
 
 ```bash
 pip install pyarchrules
 ```
 
-## Quick start
+### 2. Define your rules
+
+**Option A — `pyproject.toml` (recommended)**
+
+```toml
+# pyproject.toml
+[tool.pyarchrules.services.backend]
+path = "src/backend"
+
+# Required folder structure
+tree      = ["api", "domain", "infra"]
+tree_mode = "strict"                       # exists / strict / exact
+
+# Allowed import directions
+dependencies = [
+    "api -> domain",
+    "domain -> infra",
+]
+
+# Prevent circular imports
+no_circular_imports = true
+```
+
+Run it:
 
 ```bash
-# 1. Add [tool.pyarchrules] to pyproject.toml
-pyarchrules init-project
-
-# 2. Register a service
-pyarchrules add-service backend src/backend
-
-# 3. Run the check
 pyarchrules check
 ```
 
-## TOML configuration
-
-```toml
-[tool.pyarchrules]
-root             = "."
-validate_paths   = true
-isolate_services = true
-
-[tool.pyarchrules.services.backend]
-path         = "src/backend"
-tree         = ["api", "domain", "infra"]
-tree_mode    = "strict"
-dependencies = ["api -> domain", "domain -> infra", "* -> utils"]
-```
-
-## Python DSL
+**Option B — Python DSL (great for tests)**
 
 ```python
 # tests/test_architecture.py
 from pyarchrules import PyArchRules
 
-def test_architecture():
+
+def test_backend_architecture():
     rules = PyArchRules()
-    rules.for_service("backend") \
-        .must_contain_folders(["api", "domain", "infra"], allow_extra=False) \
-        .no_wildcard_imports() \
-        .no_circular_imports()
+    (
+        rules.for_service("backend")
+             .tree_structure(["api", "domain", "infra"], mode="strict")
+             .dependencies(["api -> domain", "domain -> infra"])
+             .no_circular_imports()
+    )
     rules.validate()
 ```
 
-## CLI commands
+Run it:
 
-| Command | Description |
-|---------|-------------|
-| `init-project` | Initialise `[tool.pyarchrules]` in `pyproject.toml` |
-| `add-service NAME PATH` | Register a service |
-| `remove-service NAME` | Remove a service |
-| `list-services` | Show all configured services |
-| `check` | Validate architecture |
+```bash
+pytest tests/test_architecture.py
+```
+
+## Next steps
+
+- [Configuration](https://mspitb.github.io/pyarchrules/configuration/) — full `[tool.pyarchrules]` reference.
+- [Python DSL](https://mspitb.github.io/pyarchrules/dsl/) — every rule available as a fluent method.
+- [Use Cases](https://mspitb.github.io/pyarchrules/use-cases/) — monorepo and Clean Architecture patterns.
 
 ## Contributing
 
@@ -88,3 +99,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 MIT
+

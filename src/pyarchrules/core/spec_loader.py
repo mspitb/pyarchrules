@@ -5,32 +5,13 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from pyarchrules.core.errors import PyArchError
+from pyarchrules.core.errors import ConfigError
+from pyarchrules.core.registries.linter_registry import LinterRegistry
+from pyarchrules.core.rules.linter.dependencies_rule import DependenciesRule
 from pyarchrules.model.spec.project_spec import ProjectSpec
 from pyarchrules.model.spec.service_spec import ServiceSpec, TreeMode
 
-_KNOWN_PROJECT_KEYS = frozenset(
-    {
-        "root",
-        "validate_paths",
-        "isolate_services",
-        "services",
-    }
-)
-
-_KNOWN_SERVICE_KEYS = frozenset(
-    {
-        "path",
-        "allowed_service_dependencies",
-        "tree",
-        "tree_mode",
-        "tree_allow_files",
-        "dependencies",
-        "no_wildcard_imports",
-        "no_private_imports",
-        "shared",
-    }
-)
+_KNOWN_PROJECT_KEYS = frozenset({"services", "isolate_services"})
 
 
 class SpecLoader:
@@ -70,103 +51,106 @@ class SpecLoader:
             context="[tool.pyarchrules]",
         )
 
-        validate_paths = pyarchrules_config.get("validate_paths", True)
-        isolate_services = pyarchrules_config.get("isolate_services", False)
-        root = pyarchrules_config.get("root", ".")
-
-        root_path = (self._project_root / root).resolve()
-        if not root_path.is_relative_to(self._project_root):
-            raise PyArchError(f"'root' path is outside the project root: {root}")
-
         services_data = pyarchrules_config.get("services", {})
-        services = self._parse_services(services_data, validate_paths, root_path)
+        services = self._parse_services(services_data)
 
-        return ProjectSpec(
-            validate_paths=validate_paths,
-            isolate_services=isolate_services,
-            services=services,
-        )
+        isolate_services = bool(pyarchrules_config.get("isolate_services", False))
+        return ProjectSpec(services=services, isolate_services=isolate_services)
 
-    def _parse_services(
-        self, services_data: dict, validate_paths: bool, root_path: Path
-    ) -> dict[str, ServiceSpec]:
+    def _parse_services(self, services_data: dict) -> dict[str, ServiceSpec]:
         """Parse services section from configuration."""
         if not services_data:
             return {
                 "root": ServiceSpec(
                     name="root",
                     path=".",
-                    project_root=root_path,
+                    project_root=self._project_root,
                 )
             }
 
         if not isinstance(services_data, dict):
-            raise PyArchError("[tool.pyarchrules.services] must be a table")
+            raise ConfigError("[tool.pyarchrules.services] must be a table")
 
         return {
-            name: self._parse_service(name, svc_data, validate_paths, root_path)
-            for name, svc_data in services_data.items()
+            name: self._parse_service(name, svc_data) for name, svc_data in services_data.items()
         }
 
-    def _parse_service(
-        self, name: str, svc_data: dict | str, validate_paths: bool, root_path: Path
-    ) -> ServiceSpec:
+    def _parse_service(self, name: str, svc_data: dict) -> ServiceSpec:
         """Parse a single service specification."""
-        if isinstance(svc_data, str):
-            rel_path = svc_data
-            allowed_deps: list[str] = []
-            tree_data: list[str] = []
-            tree_mode: TreeMode = TreeMode.EXISTS
-            tree_allow_files: bool = True
-            dependencies: list[str] = []
-            no_wildcard_imports: bool | list[str] = False
-            no_private_imports: bool | list[str] = False
-            shared: bool = False
-        else:
-            self._validate_keys(
-                svc_data,
-                _KNOWN_SERVICE_KEYS,
-                context=f"[tool.pyarchrules.services.{name}]",
+        if not isinstance(svc_data, dict):
+            raise ConfigError(
+                f"Service '{name}' must be a table, got {type(svc_data).__name__}. "
+                f'Use:\n  [tool.pyarchrules.services.{name}]\n  path = "..."'
             )
-            rel_path = svc_data.get("path")
-            if rel_path is None:
-                raise PyArchError(f"Service '{name}' must have 'path' key")
-            allowed_deps = svc_data.get("allowed_service_dependencies", [])
-            tree_data = svc_data.get("tree", [])
-            raw_mode = svc_data.get("tree_mode", TreeMode.EXISTS.value)
-            try:
-                tree_mode = TreeMode(raw_mode)
-            except ValueError:
-                valid = ", ".join(f'"{m.value}"' for m in TreeMode)
-                raise PyArchError(
-                    f"Service '{name}': invalid tree_mode '{raw_mode}'. Valid values: {valid}"
-                )
-            tree_allow_files = svc_data.get("tree_allow_files", True)
-            dependencies = svc_data.get("dependencies", [])
-            no_wildcard_imports = svc_data.get("no_wildcard_imports", False)
-            no_private_imports = svc_data.get("no_private_imports", False)
-            shared = svc_data.get("shared", False)
+
+        self._validate_keys(
+            svc_data,
+            LinterRegistry.known_service_keys(),
+            context=f"[tool.pyarchrules.services.{name}]",
+        )
+
+        rel_path = svc_data.get("path")
+        if rel_path is None:
+            raise ConfigError(f"Service '{name}' must have 'path' key")
+
+        tree_data = svc_data.get("tree", [])
+        if not isinstance(tree_data, list):
+            tree_data = []
+        # Reject duplicates eagerly — declaring the same path twice in
+        # ``tree`` is always a typo and would silently double-process.
+        if tree_data:
+            seen: set[str] = set()
+            duplicates: list[str] = []
+            for entry in tree_data:
+                if entry in seen and entry not in duplicates:
+                    duplicates.append(entry)
+                seen.add(entry)
+            if duplicates:
+                raise ConfigError(f"Service '{name}': duplicate entries in 'tree': {duplicates}")
+
+        raw_mode = svc_data.get("tree_mode", TreeMode.EXISTS.value)
+        try:
+            tree_mode = TreeMode(raw_mode)
+        except ValueError:
+            valid = ", ".join(f'"{m.value}"' for m in TreeMode)
+            raise ConfigError(
+                f"Service '{name}': invalid tree_mode '{raw_mode}'. Valid values: {valid}"
+            )
+        tree_allow_files = svc_data.get("tree_allow_files", True)
+        tree_ignore = svc_data.get("tree_ignore", [])
+        if not isinstance(tree_ignore, list) or not all(isinstance(p, str) for p in tree_ignore):
+            raise ConfigError(f"Service '{name}': 'tree_ignore' must be a list of glob strings")
+        dependencies = svc_data.get("dependencies", [])
+        no_circular_imports = svc_data.get("no_circular_imports", False)
+        shared = bool(svc_data.get("shared", False))
+
+        if dependencies:
+            if not isinstance(dependencies, list):
+                raise ConfigError(f"Service '{name}': 'dependencies' must be a list of strings")
+            # Syntactic validation at load time. Overlap detection happens
+            # at validate() time and is reported as a warning, not a config
+            # error.
+            DependenciesRule.parse_rules(dependencies, service_name=name)
 
         rel_posix = str(rel_path).replace("\\", "/").rstrip("/") or "."
-        full_path = (root_path / rel_posix).resolve()
+        full_path = (self._project_root / rel_posix).resolve()
 
         if not full_path.is_relative_to(self._project_root):
-            raise PyArchError(f"Service '{name}' path is outside project root: {rel_path}")
+            raise ConfigError(f"Service '{name}' path is outside project root: {rel_path}")
 
-        if validate_paths and not full_path.is_dir():
-            raise PyArchError(f"Service '{name}' path doesn't exist: {rel_path}")
+        if not full_path.is_dir():
+            raise ConfigError(f"Service '{name}' path doesn't exist: {rel_path}")
 
         return ServiceSpec(
             name=name,
             path=rel_posix,
-            project_root=root_path,
-            allowed_service_dependencies=allowed_deps,
-            tree=tree_data if isinstance(tree_data, list) else [],
+            project_root=self._project_root,
+            tree=tree_data,
             tree_mode=tree_mode,
             tree_allow_files=tree_allow_files,
+            tree_ignore=list(tree_ignore),
             dependencies=dependencies,
-            no_wildcard_imports=no_wildcard_imports,
-            no_private_imports=no_private_imports,
+            no_circular_imports=bool(no_circular_imports),
             shared=shared,
         )
 
@@ -192,6 +176,6 @@ class SpecLoader:
         unknown = sorted(set(data) - known)
         if unknown:
             keys = ", ".join(f"'{k}'" for k in unknown)
-            raise PyArchError(
+            raise ConfigError(
                 f"Unknown key(s) in {context}: {keys}. Known keys: {', '.join(sorted(known))}"
             )

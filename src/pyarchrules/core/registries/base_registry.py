@@ -3,86 +3,42 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
-from pyarchrules.core.errors import PyArchError
+from pyarchrules.core.errors import ValidationError
 from pyarchrules.core.reporting import ConsoleViolationReporter, ViolationReporter
 from pyarchrules.model.rules.rule_eval_result import RuleEvalResult
 
 
-class BaseRegistry[V](ABC):
-    """Generic base registry mapping service names to rule containers.
+class BaseRegistry(ABC):
+    """Base registry mapping service names to a rule container.
 
-    Subclasses must implement :meth:`_collect_violations` to traverse
+    Subclasses must implement :meth:`collect_violations` to traverse
     their specific store type.
     """
 
     def __init__(self) -> None:
-        self._store: dict[str, V] = {}
+        self._store: dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     # Storage helpers
     # ------------------------------------------------------------------
 
-    def get(self, service_name: str) -> V | None:
-        """Return the entry for *service_name*, or ``None`` if absent.
+    def get(self, service_name: str, default: Any = None) -> Any:
+        """Return the entry for *service_name*, or *default* if absent."""
+        return self._store.get(service_name, default)
 
-        Parameters
-        ----------
-        service_name : str
-
-        Returns
-        -------
-        V or None
-        """
-        return self._store.get(service_name)
-
-    def get_all(self) -> dict[str, V]:
-        """Return a shallow copy of the full registry.
-
-        Returns
-        -------
-        dict[str, V]
-        """
+    def get_all(self) -> dict[str, Any]:
+        """Return a shallow copy of the full registry."""
         return dict(self._store)
-
-    def get_all_services(self) -> list[str]:
-        """Return all service names that have a registered entry.
-
-        Returns
-        -------
-        list[str]
-        """
-        return list(self._store.keys())
-
-    def has(self, service_name: str) -> bool:
-        """Return ``True`` if *service_name* has a registered entry.
-
-        Parameters
-        ----------
-        service_name : str
-
-        Returns
-        -------
-        bool
-        """
-        return service_name in self._store
-
-    def clear(self) -> None:
-        """Remove all entries from the registry."""
-        self._store.clear()
 
     # ------------------------------------------------------------------
     # Violation pipeline
     # ------------------------------------------------------------------
 
     @abstractmethod
-    def _collect_violations(self) -> list:
-        """Collect and return all violations from every registered entry.
-
-        Returns
-        -------
-        list[RuleViolation]
-        """
+    def collect_violations(self) -> list:
+        """Collect and return all violations from every registered entry."""
 
     def validate(
         self,
@@ -95,7 +51,7 @@ class BaseRegistry[V](ABC):
         Parameters
         ----------
         raise_on_violation : bool, optional
-            Raise :class:`~pyarchrules.core.errors.PyArchError` when errors are found.
+            Raise :class:`~pyarchrules.core.errors.ValidationError` when errors are found.
         verbose : bool, optional
             Log violations via the supplied *reporter* when ``True``.
         reporter : ViolationReporter, optional
@@ -106,7 +62,7 @@ class BaseRegistry[V](ABC):
         -------
         RuleEvalResult
         """
-        result = RuleEvalResult(violations=self._collect_violations())
+        result = RuleEvalResult(violations=self.collect_violations())
 
         if verbose and not result.is_valid:
             (reporter or ConsoleViolationReporter()).report(result)
@@ -115,6 +71,6 @@ class BaseRegistry[V](ABC):
             error_msg = f"Validation failed: {result.error_count} error(s)"
             if result.warning_count:
                 error_msg += f", {result.warning_count} warning(s)"
-            raise PyArchError(error_msg)
+            raise ValidationError(error_msg)
 
         return result

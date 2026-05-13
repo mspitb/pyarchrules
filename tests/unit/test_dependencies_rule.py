@@ -1,5 +1,8 @@
 """Tests for DependenciesRule."""
 
+import pytest
+
+from pyarchrules.core.errors import ConfigError
 from pyarchrules.core.rules.linter.dependencies_rule import DependenciesRule
 
 
@@ -15,47 +18,50 @@ class TestDependenciesRule:
         syntax_errors = [v for v in violations if "Invalid dependency rule" in v.message]
         assert len(syntax_errors) == 0
 
-    def test_invalid_arrow_direction_returns_error(self, make_service_spec):
-        violations = DependenciesRule(make_service_spec(dependencies=["api <- domain"])).validate()
+    # ------------------------------------------------------------------
+    # Parse-time errors are now ConfigError (raised by parse_rules /
+    # SpecLoader at load time), not runtime RuleViolation entries.
+    # ------------------------------------------------------------------
 
-        assert len(violations) >= 1
-        assert any("Invalid dependency rule" in v.message for v in violations)
-        assert any("Invalid arrow" in v.details.get("error", "") for v in violations)
+    def test_invalid_arrow_direction_raises_config_error(self):
+        with pytest.raises(ConfigError, match="invalid arrow"):
+            DependenciesRule.parse_rules(["api <- domain"])
 
-    def test_missing_arrow_returns_error(self, make_service_spec):
-        violations = DependenciesRule(make_service_spec(dependencies=["api domain"])).validate()
+    def test_missing_arrow_raises_config_error(self):
+        with pytest.raises(ConfigError, match="missing '->'"):
+            DependenciesRule.parse_rules(["api domain"])
 
-        assert len(violations) >= 1
-        assert any("Missing '->'" in v.details.get("error", "") for v in violations)
+    def test_empty_source_or_target_raises_config_error(self):
+        with pytest.raises(ConfigError, match="empty source or target"):
+            DependenciesRule.parse_rules(["-> domain"])
+        with pytest.raises(ConfigError, match="empty source or target"):
+            DependenciesRule.parse_rules(["api ->"])
 
-    def test_empty_source_or_target_returns_error(self, make_service_spec):
-        violations = DependenciesRule(
-            make_service_spec(dependencies=["-> domain", "api ->"])
-        ).validate()
-
-        assert len(violations) >= 2
-        errors = [v.details.get("error", "") for v in violations]
-        assert any("Empty source or target" in e for e in errors)
-
-    def test_overlapping_rules_source_and_target(
-        self, make_service_spec, tmp_test_dir, monkeypatch
-    ):
+    def test_overlapping_rules_emit_warning(self, make_service_spec, tmp_test_dir, monkeypatch):
+        """Overlap is a *warning*, not a config error — broader subsumes narrower."""
         monkeypatch.chdir(tmp_test_dir)
+        (tmp_test_dir / "api").mkdir()
+        (tmp_test_dir / "domain").mkdir()
+
+        # parse_rules itself does NOT raise on overlap (syntax-only now).
+        parsed = DependenciesRule.parse_rules(
+            ["api -> domain", "api/controllers -> domain"]
+        )
+        assert len(parsed) == 2
+
+        # Overlap shows up at validate() time as a warning.
         spec = make_service_spec(dependencies=["api -> domain", "api/controllers -> domain"])
         violations = DependenciesRule(spec).validate()
-
-        overlap_errors = [v for v in violations if "Overlapping" in v.message]
-        assert len(overlap_errors) >= 1
+        warnings = [v for v in violations if v.severity == "warning"]
+        assert any("Overlapping dependency rules" in v.message for v in warnings)
+        assert any("api -> domain" in v.message for v in warnings)
 
     def test_same_source_different_targets_allowed(
         self, make_service_spec, tmp_test_dir, monkeypatch
     ):
         monkeypatch.chdir(tmp_test_dir)
-        spec = make_service_spec(dependencies=["api -> domain/models", "api -> domain/services"])
-        violations = DependenciesRule(spec).validate()
-
-        overlap_errors = [v for v in violations if "Overlapping" in v.message]
-        assert len(overlap_errors) == 0
+        # parse_rules accepts the pair without raising.
+        DependenciesRule.parse_rules(["api -> domain/models", "api -> domain/services"])
 
     def test_rule_name_property(self, make_service_spec):
         assert DependenciesRule(make_service_spec()).rule_name == "internal_dependencies"

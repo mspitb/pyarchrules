@@ -32,7 +32,7 @@ def test_init_project_creates_tool_section(make_project, cli_runner):
 
 @pytest.mark.cli
 def test_init_project_adds_default_keys(make_project, cli_runner):
-    """Should add root, validate_paths and isolate_services to [tool.pyarchrules]."""
+    """Should create an empty [tool.pyarchrules] section (no project-level keys in v1)."""
     project = make_project(with_pyproject=False, name="my_awesome_project")
     project.write_minimal_pyproject()
 
@@ -42,9 +42,9 @@ def test_init_project_adds_default_keys(make_project, cli_runner):
     config = project.get_pyarchrules_config()
     assert "project_name" not in config
     assert "description" not in config
-    assert config["root"] == "."
-    assert config["validate_paths"] is True
-    assert config["isolate_services"] is True
+    assert "root" not in config
+    assert "validate_paths" not in config
+    assert "isolate_services" not in config
 
 
 @pytest.mark.cli
@@ -63,21 +63,26 @@ def test_init_project_does_not_add_deprecated_fields(make_project, cli_runner):
 
 @pytest.mark.cli
 def test_init_project_replaces_existing_values(make_project, cli_runner):
-    """Should replace existing configuration with fresh default values."""
+    """Should replace existing configuration with a fresh empty block."""
     project = make_project(
         with_pyproject=True,
-        extra_config={"root": "./src", "validate_paths": False},
+        extra_config={},
     )
+    # Manually add legacy keys to verify they get cleaned up on reinit
+    data = project.read_pyproject()
+    data["tool"]["pyarchrules"]["root"] = "./src"
+    data["tool"]["pyarchrules"]["validate_paths"] = False
+    project.write_pyproject(data)
 
     result = cli_runner.invoke(app, ["init-project", str(project.root)], input="y\n")
 
     assert result.exit_code == 0
     config = project.get_pyarchrules_config()
-    # Values should be replaced with defaults
     assert "project_name" not in config
     assert "description" not in config
-    assert config["root"] == "."
-    assert config["isolate_services"] is True
+    assert "root" not in config
+    assert "validate_paths" not in config
+    assert "isolate_services" not in config
 
 
 @pytest.mark.cli
@@ -95,7 +100,7 @@ def test_init_project_success_message(make_project, cli_runner):
 
 @pytest.mark.cli
 def test_init_project_creates_root_service(make_project, cli_runner):
-    """Should create root = "." in [tool.pyarchrules] when initializing."""
+    """Should create empty [tool.pyarchrules] block when initializing (v1)."""
     project = make_project(with_pyproject=False)
     project.write_minimal_pyproject()
 
@@ -103,8 +108,9 @@ def test_init_project_creates_root_service(make_project, cli_runner):
 
     assert result.exit_code == 0
     config = project.get_pyarchrules_config()
-    assert config["root"] == "."
-    assert config["isolate_services"] is True
+    assert "root" not in config
+    assert "validate_paths" not in config
+    assert "isolate_services" not in config
 
 
 @pytest.mark.cli
@@ -120,8 +126,8 @@ def test_init_project_replaces_existing_services(make_project, cli_runner):
     config = project.get_pyarchrules_config()
     # Services should be REMOVED (replaced with fresh config)
     assert "services" not in config
-    assert config["root"] == "."
-    assert config["isolate_services"] is True
+    assert "root" not in config
+    assert "isolate_services" not in config
 
 
 @pytest.mark.cli
@@ -153,7 +159,7 @@ def test_init_project_cancels_on_no_confirmation(make_project, cli_runner):
 @pytest.mark.cli
 def test_init_project_force_skips_confirmation(make_project, cli_runner):
     """Should skip confirmation prompt when --force flag is used."""
-    project = make_project(with_pyproject=True, extra_config={"root": "./src"})
+    project = make_project(with_pyproject=True)
 
     result = cli_runner.invoke(app, ["init-project", "--force", str(project.root)])
 
@@ -161,11 +167,11 @@ def test_init_project_force_skips_confirmation(make_project, cli_runner):
     # Should not show warning or prompt
     assert "already initialized" not in result.stdout
     assert "Do you want to reinitialize" not in result.stdout
-    # Should be reinitialized with defaults
+    # Should be reinitialized with empty v1 block
     config = project.get_pyarchrules_config()
     assert "project_name" not in config
-    assert config["root"] == "."
-    assert config["isolate_services"] is True
+    assert "root" not in config
+    assert "isolate_services" not in config
 
 
 @pytest.mark.cli

@@ -1,6 +1,7 @@
-﻿# Use Cases
+# Use Cases
 
-Practical patterns for the most common architectural challenges.
+Practical patterns for common architectural setups, using the v1 rule set:
+`tree_structure`, `dependencies`, `no_circular_imports`, `service_isolation`.
 
 ---
 
@@ -28,34 +29,49 @@ my-platform/
 **Configuration:**
 
 ```toml
-[tool.pyarchrules]
-isolate_services = true
-
 [tool.pyarchrules.services.auth]
-path                         = "services/auth"
-tree                         = ["api", "domain", "infra"]
-tree_mode                    = "strict"
-dependencies                 = ["api -> domain", "domain -> infra"]
-allowed_service_dependencies = ["shared"]
+path                = "services/auth"
+tree                = ["api", "domain", "infra"]
+tree_mode           = "strict"
+dependencies        = ["api -> domain", "domain -> infra"]
+no_circular_imports = true
 
 [tool.pyarchrules.services.catalog]
-path                         = "services/catalog"
-tree                         = ["api", "domain", "infra"]
-tree_mode                    = "strict"
-dependencies                 = ["api -> domain", "domain -> infra"]
-allowed_service_dependencies = ["shared"]
+path                = "services/catalog"
+tree                = ["api", "domain", "infra"]
+tree_mode           = "strict"
+dependencies        = ["api -> domain", "domain -> infra"]
+no_circular_imports = true
 
 [tool.pyarchrules.services.shared]
-path   = "services/shared"
-tree   = ["models", "utils"]
-shared = true
+path = "services/shared"
+tree = ["models", "utils"]
 ```
 
 What this enforces:
 
-- `auth` and `catalog` must each contain **exactly** `api`, `domain`, and `infra` (`tree_mode = "strict"`).
+- `auth` and `catalog` must each contain **exactly** `api`, `domain`, and
+  `infra` (`tree_mode = "strict"`).
 - Internal imports follow `api → domain → infra`.
-- `auth` and `catalog` may import from `shared` (`shared = true`), but not from each other (`isolate_services = true`).
+- No circular imports inside `auth` or `catalog`.
+
+To also forbid `auth` and `catalog` from importing each other's internals,
+add `isolate_services = true` at the project level and mark `shared` as a
+shared library:
+
+```toml
+[tool.pyarchrules]
+isolate_services = true
+
+[tool.pyarchrules.services.shared]
+path   = "services/shared"
+shared = true
+tree   = ["models", "utils"]
+
+# ... auth and catalog as above
+```
+
+See [Configuration → Service isolation](configuration.md#service-isolation).
 
 ---
 
@@ -83,6 +99,7 @@ dependencies = [
     "application -> domain",
     "infra       -> domain",
 ]
+no_circular_imports = true
 ```
 
 ```
@@ -94,52 +111,55 @@ api --> application --> domain <-- infra
 ```python
 def test_clean_architecture():
     rules = PyArchRules()
-    rules.for_service("backend").must_contain_folders(
-        ["api", "application", "domain", "infra"],
-        allow_extra=False,
-    )
+    rules.for_service("backend") \
+         .tree_structure(["api", "application", "domain", "infra"], mode="strict") \
+         .dependencies([
+             "api         -> application",
+             "application -> domain",
+             "infra       -> domain",
+         ]) \
+         .no_circular_imports()
     rules.validate()
 ```
+
+DSL and TOML can be combined or used independently. See [Python DSL](dsl.md).
 
 ---
 
 ## Microservices with a shared library
 
 ```toml
-[tool.pyarchrules]
-isolate_services = true
-
 [tool.pyarchrules.services.shared]
-path   = "shared"
-tree   = ["models", "utils"]
-shared = true
+path = "shared"
+tree = ["models", "utils"]
 
 [tool.pyarchrules.services.orders]
-path                         = "orders"
-tree                         = ["api", "domain", "infra"]
-tree_mode                    = "strict"
-dependencies                 = ["api -> domain", "domain -> infra"]
-allowed_service_dependencies = ["shared"]
+path                = "orders"
+tree                = ["api", "domain", "infra"]
+tree_mode           = "strict"
+dependencies        = ["api -> domain", "domain -> infra"]
+no_circular_imports = true
 
 [tool.pyarchrules.services.payments]
-path                         = "payments"
-tree                         = ["api", "domain", "infra"]
-tree_mode                    = "strict"
-dependencies                 = ["api -> domain", "domain -> infra"]
-allowed_service_dependencies = ["shared"]
+path                = "payments"
+tree                = ["api", "domain", "infra"]
+tree_mode           = "strict"
+dependencies        = ["api -> domain", "domain -> infra"]
+no_circular_imports = true
 ```
 
-`shared = true` allows `orders` and `payments` to import from `shared` while keeping them isolated from each other.
+Each microservice gets its required folder layout, layered import direction,
+and cycle detection. Add `isolate_services = true` and mark shared libraries
+with `shared = true` to additionally forbid `orders` and `payments` from
+importing each other.
 
 ---
 
-## Enforcing consistent structure with parameterised tests
+## Catching circular imports across all services
 
 ```python
 import pytest
 from pyarchrules import PyArchRules
-
-STANDARD_LAYOUT = ["api", "domain", "infra"]
 
 
 @pytest.fixture(scope="session")
@@ -148,10 +168,8 @@ def arch():
 
 
 @pytest.mark.parametrize("service", ["orders", "payments", "catalog"])
-def test_standard_layout(arch, service):
-    arch.for_service(service).must_contain_folders(
-        STANDARD_LAYOUT, allow_extra=False
-    )
+def test_no_circular_imports(arch, service):
+    arch.for_service(service).no_circular_imports()
     arch.validate()
 ```
 
@@ -200,3 +218,4 @@ repos:
         language: system
         pass_filenames: false
 ```
+

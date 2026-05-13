@@ -48,7 +48,7 @@ class TestPyArchConfigInitialization:
         assert config.is_initialized() is True
 
     def test_initialize_creates_config_section(self, make_project):
-        """Creates [tool.pyarchrules] section with default keys."""
+        """Creates an empty [tool.pyarchrules] section (v1: no project-level keys)."""
         project = make_project(with_pyproject=False)
         project.write_minimal_pyproject()
 
@@ -61,12 +61,17 @@ class TestPyArchConfigInitialization:
         assert "pyarchrules" in data["tool"]
         assert "project_name" not in data["tool"]["pyarchrules"]
         assert "description" not in data["tool"]["pyarchrules"]
-        assert data["tool"]["pyarchrules"]["root"] == "."
-        assert data["tool"]["pyarchrules"]["isolate_services"] is True
+        assert "root" not in data["tool"]["pyarchrules"]
+        assert "validate_paths" not in data["tool"]["pyarchrules"]
+        assert "isolate_services" not in data["tool"]["pyarchrules"]
 
     def test_initialize_replaces_existing_config(self, make_project):
         """Replaces existing config when called again."""
-        project = make_project(with_pyproject=True, extra_config={"root": "./src"})
+        project = make_project(with_pyproject=True)
+        # Inject legacy keys directly to verify they are removed on reinit
+        data = project.read_pyproject()
+        data["tool"]["pyarchrules"]["root"] = "./src"
+        project.write_pyproject(data)
 
         config = PyArchConfig.load(project.root)
         config.initialize()
@@ -74,7 +79,7 @@ class TestPyArchConfigInitialization:
 
         data = project.read_pyproject()
         assert "project_name" not in data["tool"]["pyarchrules"]
-        assert data["tool"]["pyarchrules"]["root"] == "."
+        assert "root" not in data["tool"]["pyarchrules"]
 
 
 class TestPyArchConfigServices:

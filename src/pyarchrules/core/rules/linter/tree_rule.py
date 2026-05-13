@@ -1,8 +1,8 @@
 """Tree structure validation rule."""
 
+from fnmatch import fnmatchcase
 from pathlib import Path
-
-from loguru import logger
+from typing import ClassVar
 
 from pyarchrules.core.rules.rule import Rule
 from pyarchrules.model.rules.rule_violation import RuleViolation
@@ -31,12 +31,23 @@ class TreeRule(Rule):
     ``tree_allow_files = true`` (default):
         In ``strict`` / ``exact`` mode, loose files are always tolerated.
 
+    ``tree_ignore``:
+        List of glob patterns matched against directory basenames; matched
+        dirs are exempt from ``strict`` / ``exact`` reporting (and skipped
+        by leaf-walking in ``exact`` mode). Common values: ``"__snapshots__"``,
+        ``"migrations"``, ``"fixtures"``.
+
     Config example::
 
         tree             = ["api", "api/model", "domain"]
         tree_mode        = "strict"
         tree_allow_files = true
+        tree_ignore      = ["__snapshots__", "migrations"]
     """
+
+    CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset(
+        {"tree", "tree_mode", "tree_allow_files", "tree_ignore"}
+    )
 
     @property
     def rule_name(self) -> str:
@@ -44,7 +55,6 @@ class TreeRule(Rule):
 
     def validate(self) -> list[RuleViolation]:
         if not self._service_spec.tree:
-            logger.info(f"[{self._service_spec.name}] {self.rule_name}: No tree config, skipping")
             return []
 
         service_dir = self._service_spec.absolute_path
@@ -84,12 +94,6 @@ class TreeRule(Rule):
         if mode is TreeMode.EXACT:
             violations.extend(self._check_leaf_internals(service_dir))
 
-        if not violations:
-            logger.success(
-                f"[{self._service_spec.name}] {self.rule_name}: "
-                f"✓ {len(self._service_spec.tree)} path(s) (mode={mode.value})"
-            )
-
         return violations
 
     # ------------------------------------------------------------------
@@ -107,6 +111,7 @@ class TreeRule(Rule):
         Leaf directories are intentionally skipped here.
         """
         declared: set[str] = set(self._service_spec.tree)
+        ignore_patterns = self._service_spec.tree_ignore
 
         covered: set[str] = {""}
         for tree_path in declared:
@@ -133,6 +138,10 @@ class TreeRule(Rule):
 
             if self._service_spec.tree_allow_files:
                 extra = {i for i in extra if (full_path / i).is_dir()}
+
+            # tree_ignore: drop any name matching one of the user's globs.
+            if ignore_patterns and extra:
+                extra = {name for name in extra if not _matches_any(name, ignore_patterns)}
 
             if extra:
                 display = level or "."
@@ -166,8 +175,11 @@ class TreeRule(Rule):
         """Walk inside every leaf directory and report undeclared subdirectories.
 
         A leaf is a declared path that has no children in ``tree``.
+        Directory names matching any ``tree_ignore`` glob are skipped
+        (the user explicitly opted them out).
         """
         declared: set[str] = set(self._service_spec.tree)
+        ignore_patterns = self._service_spec.tree_ignore
         leaves = [p for p in declared if not any(o.startswith(p + "/") for o in declared)]
 
         undeclared: list[str] = []
@@ -179,6 +191,8 @@ class TreeRule(Rule):
                 if not dirpath.is_dir():
                     continue
                 if dirpath.name.startswith((".", "__")):
+                    continue
+                if ignore_patterns and _matches_any(dirpath.name, ignore_patterns):
                     continue
                 rel = dirpath.relative_to(service_dir).as_posix()
                 if rel not in declared:
@@ -213,3 +227,8 @@ class TreeRule(Rule):
                 if child:
                     children.add(child)
         return children
+
+
+def _matches_any(name: str, patterns: list[str]) -> bool:
+    """Return ``True`` if *name* matches any of the fnmatch *patterns*."""
+    return any(fnmatchcase(name, p) for p in patterns)

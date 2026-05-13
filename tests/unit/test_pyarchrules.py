@@ -175,87 +175,76 @@ class TestDSLValidation:
 
     @pytest.fixture
     def project(self, make_project):
-        """Create a project with services for DSL testing."""
+        """Create a project with two services for DSL testing."""
         project = make_project(
             with_pyproject=True,
-            services={"valid": "services/valid", "invalid": "services/invalid"},
+            services={"clean": "services/clean", "cyclic": "services/cyclic"},
         )
-        # valid service has correct structure
-        valid_dir = project.root / "services/valid"
-        (valid_dir / "api").mkdir(parents=True)
-        (valid_dir / "models").mkdir()
-        (valid_dir / "utils").mkdir()
 
-        # invalid service has incomplete structure
-        invalid_dir = project.root / "services/invalid"
-        (invalid_dir / "api").mkdir(parents=True)
-        (invalid_dir / "extra_folder").mkdir()
+        # clean service: a package whose modules don't import each other
+        clean_pkg = project.root / "services/clean/domain"
+        clean_pkg.mkdir(parents=True)
+        (clean_pkg / "__init__.py").write_text("", encoding="utf-8")
+        (clean_pkg / "a.py").write_text("X = 1\n", encoding="utf-8")
+        (clean_pkg / "b.py").write_text("Y = 2\n", encoding="utf-8")
+
+        # cyclic service: a <-> b form a cycle inside a package
+        cyclic_pkg = project.root / "services/cyclic/domain"
+        cyclic_pkg.mkdir(parents=True)
+        (cyclic_pkg / "__init__.py").write_text("", encoding="utf-8")
+        (cyclic_pkg / "a.py").write_text("from . import b\n", encoding="utf-8")
+        (cyclic_pkg / "b.py").write_text("from . import a\n", encoding="utf-8")
 
         return project
 
-    def test_valid_structure_passes(self, project):
-        """Passes validation when structure is valid."""
+    def test_clean_service_passes(self, project):
+        """Passes validation when no circular imports exist."""
         rules = PyArchRules(project.root)
-        rules.for_service("valid").must_contain_folders(["api", "models"], allow_extra=True)
+        rules.for_service("clean").no_circular_imports()
 
-        result = rules.validate(raise_on_violation=False)
+        result = rules.validate(raise_on_violation=False, verbose=False)
 
         assert result.is_valid
         assert len(result.violations) == 0
 
-    def test_missing_folders_returns_violations(self, project):
-        """Returns violations when folders are missing."""
+    def test_circular_imports_returns_violations(self, project):
+        """Returns violations when a cycle exists."""
         rules = PyArchRules(project.root)
-        rules.for_service("invalid").must_contain_folders(
-            ["api", "models", "controllers"], allow_extra=True
-        )
+        rules.for_service("cyclic").no_circular_imports()
 
         result = rules.validate(raise_on_violation=False, verbose=False)
 
         assert not result.is_valid
-        assert result.error_count == 1
-        assert "models" in result.violations[0].details["missing"]
-
-    def test_extra_folders_returns_warning(self, project):
-        """Returns warning when extra folders exist."""
-        rules = PyArchRules(project.root)
-        rules.for_service("invalid").must_contain_folders(["api"], allow_extra=False)
-
-        result = rules.validate(raise_on_violation=False, verbose=False)
-
-        assert result.warning_count == 1
-        assert "extra_folder" in result.violations[0].details["extra"]
+        assert len(result.violations) >= 1
+        assert all(v.rule_name == "no_circular_imports" for v in result.violations)
 
     def test_raise_on_violation_raises_error(self, project):
         """Raises PyArchError when raise_on_violation=True."""
         rules = PyArchRules(project.root)
-        rules.for_service("invalid").must_contain_folders(["api", "models"], allow_extra=True)
+        rules.for_service("cyclic").no_circular_imports()
 
         with pytest.raises(PyArchError) as exc:
             rules.validate(raise_on_violation=True, verbose=False)
 
         assert "Validation failed" in str(exc.value)
 
-    def test_multiple_rules_on_same_service(self, project):
-        """Supports multiple rules on same service via chaining."""
+    def test_chained_calls_return_self(self, project):
+        """Builder pattern allows chaining."""
         rules = PyArchRules(project.root)
-        rules.for_service("valid").must_contain_folders(["api"], allow_extra=True)
-        rules.for_service("valid").must_contain_folders(["models"], allow_extra=True)
-
-        result = rules.validate(raise_on_violation=False)
-
+        result_obj = rules.for_service("clean").no_circular_imports().no_circular_imports()
+        # Two rules now registered for the same service
+        assert result_obj is not None
+        result = rules.validate(raise_on_violation=False, verbose=False)
         assert result.is_valid
 
     def test_multiple_services_validation(self, project):
-        """Validates multiple services in single validate() call."""
+        """Validates multiple services in a single validate() call."""
         rules = PyArchRules(project.root)
-        rules.for_service("valid").must_contain_folders(["api", "models"], allow_extra=True)
-        rules.for_service("invalid").must_contain_folders(["api", "models"], allow_extra=False)
+        rules.for_service("clean").no_circular_imports()
+        rules.for_service("cyclic").no_circular_imports()
 
         result = rules.validate(raise_on_violation=False, verbose=False)
 
         assert not result.is_valid
-        # invalid service has: missing 'models' + extra 'extra_folder'
-        assert len(result.violations) == 2
         for v in result.violations:
-            assert v.service_name == "invalid"
+            assert v.service_name == "cyclic"

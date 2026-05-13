@@ -21,14 +21,8 @@ Run from the directory that contains `pyproject.toml`:
 pyarchrules init-project
 ```
 
-This adds a `[tool.pyarchrules]` block with defaults:
-
-```toml
-[tool.pyarchrules]
-root             = "."
-validate_paths   = true
-isolate_services = true
-```
+This adds an empty `[tool.pyarchrules]` block to `pyproject.toml`. Service
+definitions go under `[tool.pyarchrules.services.<name>]`.
 
 ---
 
@@ -93,15 +87,37 @@ Found 1 error(s):
    Missing required paths: ['domain']
 ```
 
-Exit code `1` is returned on any error.
+Exit code `1` is returned on any error, `2` on a configuration problem
+(missing `pyproject.toml`, malformed table, etc.). See
+[CLI Reference → Exit codes](cli.md#exit-codes).
 
 ---
 
-## 5. CI integration
+## 5. Inspect the resolved config
+
+To see exactly which services and rules `check` will run — useful when
+debugging a monorepo or a `--config` override:
+
+```bash
+pyarchrules show-config
+```
+
+Outputs a JSON document with every service, its declared keys, and the list
+of rules that will actually execute.
+
+---
+
+## 6. CI integration
 
 ```yaml
 - name: Architecture check
   run: pyarchrules check
+```
+
+For machine-readable output (GitHub annotations, custom dashboards):
+
+```bash
+pyarchrules check --format json --quiet > arch.json
 ```
 
 ---
@@ -117,10 +133,18 @@ from pyarchrules import PyArchRules
 def test_architecture():
     rules = PyArchRules()
     rules.for_service("backend") \
-        .must_contain_folders(["api", "domain", "infra"], allow_extra=False) \
-        .no_wildcard_imports() \
-        .no_circular_imports()
+         .tree_structure(["domain", "application", "infra"], mode="strict") \
+         .dependencies(["application -> domain", "infra -> domain"]) \
+         .no_circular_imports()
     rules.validate()
+```
+
+If you don't want a `[tool.pyarchrules]` table at all, use `from_services`
+for a TOML-free setup:
+
+```python
+rules = PyArchRules.from_services({"backend": "src/backend"})
+rules.for_service("backend").no_circular_imports().validate()
 ```
 
 See [Python DSL](dsl.md) for all available rules.

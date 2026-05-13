@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import ClassVar
 
-from pyarchrules.core.rules.base.import_rule import ImportBaseRule
 from pyarchrules.core.rules.checks.imports import (
-    ImportInfo,
     build_module_graph,
     collect_imports_from_dir,
     detect_cycles,
 )
+from pyarchrules.core.rules.rule import Rule
 from pyarchrules.model.rules.rule_violation import RuleViolation
 from pyarchrules.model.spec.service_spec import ServiceSpec
 
 
-class NoCircularImportsRule(ImportBaseRule):
+class NoCircularImportsRule(Rule):
     """Detect circular import chains within the service (or a specific *folder*).
 
     Uses AST parsing + DFS to build an intra-package dependency graph and find cycles.
@@ -24,25 +23,37 @@ class NoCircularImportsRule(ImportBaseRule):
 
         rules.for_service("backend").no_circular_imports()
         rules.for_service("backend").no_circular_imports("domain")
+
+    TOML usage (auto-registered as a linter rule when set)::
+
+        [tool.pyarchrules.services.backend]
+        no_circular_imports = true
     """
 
+    CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"no_circular_imports"})
+
     def __init__(self, service_spec: ServiceSpec, folder: str | None = None):
-        super().__init__(service_spec, folder=folder)
+        super().__init__(service_spec)
+        self._folder = folder
 
     @property
     def rule_name(self) -> str:
         return "no_circular_imports"
 
     def validate(self) -> list[RuleViolation]:
-        scan_root = self._resolve_scan_root()
+        base = self._service_spec.absolute_path
+        scan_root = base / self._folder if self._folder else base
+
         if not scan_root.exists():
             return [
                 RuleViolation(
                     rule_name=self.rule_name,
                     service_name=self._service_spec.name,
                     severity="error",
-                    message=f"Directory does not exist: "
-                    f"{scan_root.relative_to(self._service_spec.project_root)}",
+                    message=(
+                        "Directory does not exist: "
+                        f"{scan_root.relative_to(self._service_spec.project_root)}"
+                    ),
                 )
             ]
 
@@ -60,12 +71,3 @@ class NoCircularImportsRule(ImportBaseRule):
             )
             for cycle in cycles
         ]
-
-    def _check_file(
-        self,
-        file: Path,
-        rel_path: Path,
-        imports: list[ImportInfo],
-    ) -> list[RuleViolation]:
-        # Not used — validate() is overridden above.
-        return []  # pragma: no cover

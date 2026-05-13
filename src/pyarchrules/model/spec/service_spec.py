@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-
-from pydantic import BaseModel, Field
 
 
 class TreeMode(StrEnum):
@@ -29,7 +28,8 @@ class TreeMode(StrEnum):
     EXACT = "exact"
 
 
-class ServiceSpec(BaseModel):
+@dataclass(slots=True, frozen=True)
+class ServiceSpec:
     """Specification for a single service within the project.
 
     Attributes
@@ -40,41 +40,39 @@ class ServiceSpec(BaseModel):
         Path to the service directory, relative to the project root.
     project_root : Path
         Absolute path to the project root (where ``pyproject.toml`` lives).
-    allowed_service_dependencies : list[str]
-        Other service names this service is allowed to depend on.
     tree : list[str]
         Required directory/file paths relative to the service root.
     tree_mode : TreeMode
         Controls how strictly the tree is validated.
         ``"exists"`` (default) — only presence is checked.
         ``"strict"`` — no extra dirs allowed at covered levels.
-        ``"full"`` — strict + recurse into leaf directories.
+        ``"exact"`` — strict + recurse into leaf directories.
     tree_allow_files : bool
-        In ``strict`` / ``full`` mode, still permit loose files (not folders).
+        In ``strict`` / ``exact`` mode, still permit loose files (not folders).
+    tree_ignore : list[str]
+        Glob patterns of directory names to skip in ``strict`` / ``exact``
+        mode (e.g. ``["__snapshots__", "migrations", "fixtures"]``).
+        Matched against the directory's basename via :func:`fnmatch.fnmatch`.
     dependencies : list[str]
         Internal import-flow rules, e.g. ``["api -> domain"]``.
-    no_wildcard_imports : bool or list[str]
-        ``True`` enforces the rule service-wide; a list restricts it to those folders.
-    no_private_imports : bool or list[str]
-        ``True`` enforces the rule service-wide; a list restricts it to those folders.
+    no_circular_imports : bool
+        When ``True``, the linter registers the cycle-detection rule for this service.
     shared : bool
-        When ``True`` this service may be imported by other services.
-        Used together with the project-level ``isolate_services`` flag.
+        When ``True``, this service is exempt from project-level
+        ``isolate_services`` enforcement — other services may freely import
+        from it. Typical for ``services/shared`` style common libraries.
     """
 
     name: str
     path: str
     project_root: Path
-    allowed_service_dependencies: list[str] = Field(default_factory=list)
-    tree: list[str] = Field(default_factory=list)
+    tree: list[str] = field(default_factory=list)
     tree_mode: TreeMode = TreeMode.EXISTS
     tree_allow_files: bool = True
-    dependencies: list[str] = Field(default_factory=list)
-    no_wildcard_imports: bool | list[str] = False
-    no_private_imports: bool | list[str] = False
+    tree_ignore: list[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
+    no_circular_imports: bool = False
     shared: bool = False
-
-    model_config = {"arbitrary_types_allowed": True}
 
     @property
     def absolute_path(self) -> Path:
