@@ -5,37 +5,88 @@
 <p align="center">
   <a href="https://github.com/mspitb/pyarchrules/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
-  <img src="https://img.shields.io/badge/status-beta%200.1.0b1-orange.svg" alt="Status: Beta">
+  <img src="https://img.shields.io/badge/status-beta%200.1.0b2-orange.svg" alt="Status: Beta">
 </p>
 
 # PyArchRules
 
-**PyArchRules** enforces architecture rules in Python projects. Define folder layouts,
-dependency directions, and service boundaries in `pyproject.toml` or in Python —
-then run `pyarchrules check` in CI to catch violations automatically.
+**Architecture linter for Python.**
+
+Define your project's folder structure and import rules in `pyproject.toml`
+(or in Python) and enforce them in CI or from your test suite.
+
+## Key features
+
+- &nbsp; Folder structure validation.
+- &nbsp; Directional dependency rules between modules.
+- &nbsp; Isolation between services and layers.
+- &nbsp; Circular import detection.
+
 
 ## Quick start
 
+### 1. Install
+
 ```bash
 pip install pyarchrules
-pyarchrules init-project
-pyarchrules add-service backend src/backend
+```
+
+### 2. Define your rules
+
+**Option A — `pyproject.toml` (recommended)**
+
+```toml
+# pyproject.toml
+[tool.pyarchrules.services.backend]
+path = "src/backend"
+
+# Required folder structure
+tree      = ["api", "domain", "infra"]
+tree_mode = "strict"                       # exists / strict / exact
+
+# Allowed import directions
+dependencies = [
+    "api -> domain",
+    "domain -> infra",
+]
+
+# Prevent circular imports
+no_circular_imports = true
+```
+
+Run it:
+
+```bash
 pyarchrules check
 ```
 
-## What it does
+**Option B — Python DSL (great for tests)**
 
-| Feature | How |
-|---------|-----|
-| Folder structure | `tree`, `tree_strict` per service |
-| Import direction | `dependencies = ["api -> domain"]` |
-| Service isolation | `isolate_services = true` |
-| Path validation | `validate_paths = true` |
-| Python DSL | fluent API in your test suite |
+```python
+# tests/test_architecture.py
+from pyarchrules import PyArchRules
 
-## Pages
 
-- [Getting Started](getting-started.md) — Install and run your first check.
-- [Configuration](configuration.md) — All `[tool.pyarchrules]` options.
-- [CLI Reference](cli.md) — Commands and flags.
-- [Python DSL](dsl.md) — Write rules in Python.
+def test_backend_architecture():
+    rules = PyArchRules()
+    (
+        rules.for_service("backend")
+             .tree_structure(["api", "domain", "infra"], mode="strict")
+             .dependencies(["api -> domain", "domain -> infra"])
+             .no_circular_imports()
+    )
+    rules.validate()
+```
+
+Run it:
+
+```bash
+pytest tests/test_architecture.py
+```
+
+## Next steps
+
+- [Configuration](configuration.md) — full `[tool.pyarchrules]` reference.
+- [Python DSL](dsl.md) — every rule available as a fluent method.
+- [Use Cases](use-cases.md) — monorepo and Clean Architecture patterns.
+

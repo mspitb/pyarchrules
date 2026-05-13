@@ -1,12 +1,15 @@
 """Internal dependencies validation rule."""
 
-import ast
 from pathlib import Path
+from typing import ClassVar
 
-from loguru import logger
-
-from pyarchrules.core.errors import PyArchError
-from pyarchrules.core.rules.checks.imports import STDLIB_MODULES
+from pyarchrules.core.errors import ConfigError
+from pyarchrules.core.rules.checks.imports import (
+    STDLIB_MODULES,
+    _resolve_relative,
+    collect_imports,
+    iter_py_files,
+)
 from pyarchrules.core.rules.rule import Rule
 from pyarchrules.model.rules.rule_violation import RuleViolation
 
@@ -28,6 +31,8 @@ class DependenciesRule(Rule):
         Specification of the service being validated.
     """
 
+    CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"dependencies"})
+
     @property
     def rule_name(self) -> str:
         return "internal_dependencies"
@@ -40,89 +45,149 @@ class DependenciesRule(Rule):
         list[RuleViolation]
         """
         if not self._service_spec.dependencies:
-            logger.info(
-                f"[{self._service_spec.name}] {self.rule_name}: No dependency rules, skipping"
-            )
             return []
 
-        violations = []
-        dependency_rules = []
+        # ``SpecLoader`` validates syntax at load time and raises
+        # :class:`ConfigError` on malformed input.  We re-parse here so
+        # programmatic construction (unit tests bypassing the loader) still
+        # works for valid input. Overlaps are reported as warnings below.
+        dependency_rules = self.parse_rules(
+            self._service_spec.dependencies, service_name=self._service_spec.name
+        )
 
-        for dep in self._service_spec.dependencies:
-            try:
-                dependency_rules.append(self._parse_dependency_rule(dep))
-            except PyArchError as e:
-                violations.append(
-                    RuleViolation(
-                        rule_name=self.rule_name,
-                        service_name=self._service_spec.name,
-                        severity="error",
-                        message=f"Invalid dependency rule: {dep}",
-                        details={"rule": dep, "error": str(e)},
-                    )
+        violations: list[RuleViolation] = []
+
+        # Overlap detection — warning severity. The broader rule subsumes the
+        # narrower one; the user can either delete the narrower rule or
+        # replace the broader rule with the explicit set they meant.
+        for r1, r2 in self.detect_overlaps(dependency_rules):
+            violations.append(
+                RuleViolation(
+                    rule_name=self.rule_name,
+                    service_name=self._service_spec.name,
+                    severity="warning",
+                    message=(
+                        f"Overlapping dependency rules: '{r1['original']}' "
+                        f"is broader than '{r2['original']}'; "
+                        "the broader rule subsumes the narrower one"
+                    ),
+                    details={"rules": [r1["original"], r2["original"]]},
                 )
-
-        if violations:
-            return violations
-
-        violations.extend(self._check_overlapping_rules(dependency_rules))
-        if violations:
-            return violations
+            )
 
         service_dir = self._service_spec.absolute_path
         if not service_dir.exists():
-            return [
+            violations.append(
                 RuleViolation(
                     rule_name=self.rule_name,
                     service_name=self._service_spec.name,
                     severity="error",
                     message=f"Service directory does not exist: {self._service_spec.path}",
                 )
-            ]
+            )
+            return violations
 
-        violations.extend(self._validate_rule_paths(service_dir, dependency_rules))
-        if violations:
+        path_violations = self._validate_rule_paths(service_dir, dependency_rules)
+        if path_violations:
+            violations.extend(path_violations)
             return violations
 
         violations.extend(self._check_imports(service_dir, dependency_rules))
-
-        if not violations:
-            logger.success(
-                f"[{self._service_spec.name}] {self.rule_name}: "
-                f"✓ {len(dependency_rules)} rule(s) validated"
-            )
-
         return violations
 
     # ------------------------------------------------------------------
-    # Parsing
+    # Parsing  (load-time — raises ConfigError, never RuleViolation)
     # ------------------------------------------------------------------
 
-    def _parse_dependency_rule(self, rule: str) -> dict:
+    @classmethod
+    def parse_rules(cls, raw_rules: list[str], *, service_name: str | None = None) -> list[dict]:
+        """Parse dependency strings — syntax check only.
+
+        Overlap detection is *not* part of this method (it was historically,
+        but raising on overlap turned out to be too aggressive — a user
+        writing ``"api -> domain"`` + ``"api/v1 -> domain"`` likely meant a
+        narrowing, not a syntax error). Overlap is now reported as a
+        warning-severity :class:`RuleViolation` at ``validate`` time via
+        :meth:`detect_overlaps`.
+
+        Parameters
+        ----------
+        raw_rules : list[str]
+            Strings like ``"api -> domain"``.
+        service_name : str, optional
+            Used purely to enrich error messages.
+
+        Returns
+        -------
+        list[dict]
+            Parsed rules in the form ``{"from", "to", "original"}``.
+
+        Raises
+        ------
+        ConfigError
+            On malformed syntax, ``* -> *``, or invalid paths.
+        """
+        prefix = f"Service '{service_name}': " if service_name else ""
+        parsed: list[dict] = []
+        for raw in raw_rules:
+            try:
+                parsed.append(cls._parse_dependency_rule(raw))
+            except ConfigError as e:
+                raise ConfigError(f"{prefix}invalid dependency rule '{raw}': {e}") from None
+        return parsed
+
+    @classmethod
+    def detect_overlaps(cls, parsed_rules: list[dict]) -> list[tuple[dict, dict]]:
+        """Return pairs of overlapping rules (broader, narrower).
+
+        Parameters
+        ----------
+        parsed_rules : list[dict]
+            Output of :meth:`parse_rules`.
+
+        Returns
+        -------
+        list[tuple[dict, dict]]
+            Each tuple is ``(broader_rule, narrower_rule)`` — the first rule's
+            source path is an ancestor of the second's, and both targets
+            cover the same area.
+        """
+        overlaps: list[tuple[dict, dict]] = []
+        for i, rule1 in enumerate(parsed_rules):
+            for rule2 in parsed_rules[i + 1 :]:
+                broader = cls._broader_of(rule1, rule2)
+                if broader is None:
+                    continue
+                narrower = rule2 if broader is rule1 else rule1
+                overlaps.append((broader, narrower))
+        return overlaps
+
+    @staticmethod
+    def _parse_dependency_rule(rule: str) -> dict:
         rule = rule.strip()
 
         if "<-" in rule:
-            raise PyArchError(
-                "Invalid arrow '<-'. Use '->' (e.g., 'api -> domain' means api can use domain)"
+            raise ConfigError(
+                "invalid arrow '<-'. Use '->' (e.g., 'api -> domain' means api can use domain)"
             )
 
         if "->" not in rule:
-            raise PyArchError("Missing '->'. Example: 'api -> domain' means api can use domain")
+            raise ConfigError("missing '->'. Example: 'api -> domain' means api can use domain")
 
         parts = rule.split("->", 1)
         source, target = parts[0].strip(), parts[1].strip()
 
         if not source or not target:
-            raise PyArchError("Empty source or target")
+            raise ConfigError("empty source or target")
 
         if source == "*" and target == "*":
-            raise PyArchError("'* -> *' is not allowed — it would permit everything")
+            raise ConfigError("'* -> *' is not allowed — it would permit everything")
 
         for path in (source, target):
             if path == "*":
                 continue
             if path.startswith(("/", "\\")) or ".." in path:
-                raise PyArchError(f"Invalid path: {path}")
+                raise ConfigError(f"invalid path: {path}")
 
         return {"from": source, "to": target, "original": rule}
 
@@ -130,37 +195,23 @@ class DependenciesRule(Rule):
     # Overlap check
     # ------------------------------------------------------------------
 
-    def _check_overlapping_rules(self, rules: list[dict]) -> list[RuleViolation]:
-        violations = []
+    @classmethod
+    def _broader_of(cls, rule1: dict, rule2: dict) -> dict | None:
+        """Return the broader rule of an overlapping pair, or ``None`` if no overlap.
 
-        for i, rule1 in enumerate(rules):
-            for rule2 in rules[i + 1 :]:
-                src1, src2 = rule1["from"], rule2["from"]
-                tgt1, tgt2 = rule1["to"], rule2["to"]
-
-                # Wildcard rules never overlap with specific rules
-                if "*" in (src1, src2, tgt1, tgt2):
-                    continue
-
-                if self._is_parent_path(src1, src2) or self._is_parent_path(src2, src1):
-                    if self._paths_overlap(tgt1, tgt2):
-                        violations.append(
-                            RuleViolation(
-                                rule_name=self.rule_name,
-                                service_name=self._service_spec.name,
-                                severity="error",
-                                message=(
-                                    f"Overlapping rules: "
-                                    f"'{rule1['original']}' and '{rule2['original']}'"
-                                ),
-                                details={
-                                    "rule1": rule1["original"],
-                                    "rule2": rule2["original"],
-                                },
-                            )
-                        )
-
-        return violations
+        Two rules overlap when one rule's source path is an ancestor of the
+        other's *and* their targets cover the same area. Wildcard (``*``)
+        rules never overlap with specific rules.
+        """
+        src1, src2 = rule1["from"], rule2["from"]
+        tgt1, tgt2 = rule1["to"], rule2["to"]
+        if "*" in (src1, src2, tgt1, tgt2):
+            return None
+        if cls._is_parent_path(src1, src2) and cls._paths_overlap(tgt1, tgt2):
+            return rule1
+        if cls._is_parent_path(src2, src1) and cls._paths_overlap(tgt1, tgt2):
+            return rule2
+        return None
 
     @staticmethod
     def _is_parent_path(parent: str, child: str) -> bool:
@@ -227,47 +278,45 @@ class DependenciesRule(Rule):
         for rule in rules:
             allowed_deps.setdefault(rule["from"], []).append(rule["to"])
 
-        # Discover internal packages: top-level directories inside the service
+        # Discover internal packages: top-level directories inside the service.
         internal_packages = {
             d.name
             for d in service_dir.iterdir()
             if d.is_dir() and not d.name.startswith((".", "_"))
         }
 
-        violations = []
+        violations: list[RuleViolation] = []
 
-        for py_file in sorted(service_dir.rglob("*.py")):
-            if "__pycache__" in py_file.parts:
-                continue
-
+        # iter_py_files prunes vendored / cache directories; the AST cache
+        # in collect_imports means sibling rules (no_circular_imports,
+        # service_isolation) reuse the same parsed result for each file.
+        for py_file in iter_py_files(service_dir):
             try:
                 rel_path = py_file.relative_to(service_dir)
-                module_path = str(rel_path.parent).replace("\\", "/")
-                if module_path == ".":
-                    module_path = ""
             except ValueError:
                 continue
+            module_path = rel_path.parent.as_posix()
+            if module_path == ".":
+                module_path = ""
 
             # Files at the service root (main.py, __init__.py, etc.) are not
             # inside any named package — dependency rules don't apply to them.
             if not module_path:
                 continue
 
-            try:
-                imports = self._extract_imports(py_file)
-            except Exception as e:
-                logger.warning(f"Failed to parse {py_file.name}: {e}")
-                continue
-
-            for imp in imports:
-                # Skip stdlib
-                if not self._is_internal_import(imp):
+            for imp in collect_imports(py_file):
+                if not imp.module:
                     continue
+                # Skip stdlib (relative imports are always internal).
+                if not imp.is_relative:
+                    top = imp.module.split(".", 1)[0]
+                    if top in STDLIB_MODULES:
+                        continue
 
-                imported_module = self._resolve_import(imp, module_path)
+                imported_module = self._resolve_import(imp.module, module_path)
 
                 # Skip third-party libs — only check imports whose root folder
-                # actually exists inside the service directory
+                # actually exists inside the service directory.
                 top_level = imported_module.split("/")[0]
                 if top_level not in internal_packages:
                     continue
@@ -278,38 +327,22 @@ class DependenciesRule(Rule):
                             rule_name=self.rule_name,
                             service_name=self._service_spec.name,
                             severity="error",
-                            message=f"Forbidden import in {rel_path}: '{imp}'",
+                            message=f"Forbidden import in {rel_path}: '{imp.module}'",
+                            file=str(rel_path),
+                            line=imp.lineno or None,
                             details={
-                                "file": str(rel_path),
                                 "from_module": module_path or "(root)",
                                 "imported": imported_module,
-                                "import_statement": imp,
+                                "import_statement": imp.module,
                             },
                         )
                     )
 
+        # Deterministic order for downstream consumers (CLI text output, JSON
+        # diffs in CI). Sort once at the end rather than sorting the file
+        # walk on every run.
+        violations.sort(key=lambda v: (v.file or "", v.line or 0, v.message))
         return violations
-
-    @staticmethod
-    def _extract_imports(py_file: Path) -> list[str]:
-        imports = []
-        try:
-            tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Import):
-                    imports.extend(alias.name for alias in node.names)
-                elif isinstance(node, ast.ImportFrom) and node.module:
-                    imports.append(node.module)
-        except SyntaxError as e:
-            logger.warning(f"Failed to parse {py_file.name}: {e}")
-        return imports
-
-    @staticmethod
-    def _is_internal_import(imp: str) -> bool:
-        if imp.startswith("."):
-            return True
-        first_part = imp.split(".", 1)[0]
-        return first_part not in STDLIB_MODULES
 
     @staticmethod
     def _resolve_import(imp: str, current_module: str) -> str:
@@ -320,7 +353,8 @@ class DependenciesRule(Rule):
         imp : str
             Raw import string, e.g. ``"domain.models"`` or ``"..utils"``.
         current_module : str
-            The ``/``-separated folder of the file being analysed, e.g. ``"api/controllers"``.
+            The ``/``-separated folder of the file being analysed,
+            e.g. ``"api/controllers"``.
 
         Returns
         -------
@@ -331,18 +365,13 @@ class DependenciesRule(Rule):
             # Absolute import — convert dots to slashes to get the full path
             return imp.replace(".", "/")
 
-        parts = current_module.split("/") if current_module else []
-        dots = len(imp) - len(imp.lstrip("."))
-
-        for _ in range(dots - 1):
-            if parts:
-                parts.pop()
-
-        rest = imp[dots:]
-        if rest:
-            parts.append(rest.replace(".", "/"))
-
-        return "/".join(parts)
+        # Relative import: delegate to the shared resolver. ``_resolve_relative``
+        # treats the dot count as "go up that many levels" relative to *current*,
+        # whereas Python semantics in a module file (current points at the file's
+        # parent package) expect one less hop, so we synthesise a fake child.
+        synthetic_current = f"{current_module}/_" if current_module else "_"
+        resolved = _resolve_relative(imp, synthetic_current) or ""
+        return resolved
 
     @staticmethod
     def _is_import_allowed(from_module: str, to_module: str, allowed_deps: dict) -> bool:

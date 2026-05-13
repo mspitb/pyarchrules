@@ -7,11 +7,97 @@ Used by both DSL rules (core/rules/) and linter rules (core/rules/linter/).
 from __future__ import annotations
 
 import ast
+import os
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
 STDLIB_MODULES: frozenset[str] = frozenset(sys.stdlib_module_names)
+
+# Directory names that are never walked when looking for ``.py`` files.
+# These are virtually always either vendored dependencies, build artefacts,
+# or tool caches — none of which belong in an architecture scan.
+_SKIP_DIRS: frozenset[str] = frozenset(
+    {
+        "__pycache__",
+        ".git",
+        ".hg",
+        ".svn",
+        ".venv",
+        "venv",
+        ".tox",
+        ".nox",
+        "node_modules",
+        "build",
+        "dist",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        "site-packages",
+        ".eggs",
+    }
+)
+
+# Per-process AST cache. Keyed by ``(absolute_path_str, mtime_ns, size)``,
+# so any in-place edit invalidates the entry automatically. The cache is
+# unbounded but the typical CLI process is short-lived; long-lived consumers
+# (e.g. a pytest session) can call :func:`clear_cache` between runs.
+_AST_CACHE: dict[tuple[str, int, int], list[ImportInfo]] = {}  # type: ignore[name-defined]
+
+
+def clear_cache() -> None:
+    """Drop all cached ``collect_imports`` results.
+
+    Useful in long-running processes (test sessions, language servers) that
+    edit files between rule evaluations.
+    """
+    _AST_CACHE.clear()
+
+
+def iter_py_files(root: Path) -> Iterator[Path]:
+    """Yield every ``.py`` file under *root*, skipping common noise directories.
+
+    Uses :func:`os.scandir` for speed and prunes the walk at every step so
+    vendored / cache directories never enter the scan. Order is filesystem
+    order — call ``sorted()`` on the result if you need determinism.
+
+    Parameters
+    ----------
+    root : Path
+        Directory to walk recursively.
+
+    Yields
+    ------
+    Path
+        Absolute path to each ``.py`` file.
+    """
+    stack: list[str] = [str(root)]
+    while stack:
+        current = stack.pop()
+        try:
+            entries = os.scandir(current)
+        except OSError:
+            continue
+        with entries as it:
+            for entry in it:
+                name = entry.name
+                if name.startswith("."):
+                    # Hidden files/dirs (e.g. ".git", ".venv") — skip both.
+                    if entry.is_dir(follow_symlinks=False) and name not in _SKIP_DIRS:
+                        # Still allow the user to opt into hidden dirs that
+                        # aren't on the noise list? No — hidden dirs are
+                        # almost never source. Stay strict.
+                        continue
+                    if entry.is_file(follow_symlinks=False):
+                        continue
+                    continue
+                if entry.is_dir(follow_symlinks=False):
+                    if name in _SKIP_DIRS:
+                        continue
+                    stack.append(entry.path)
+                elif name.endswith(".py") and entry.is_file(follow_symlinks=False):
+                    yield Path(entry.path)
 
 
 @dataclass
@@ -56,6 +142,10 @@ class ImportInfo:
 def collect_imports(path: Path) -> list[ImportInfo]:
     """Parse all import statements from a Python file.
 
+    Results are cached by ``(path, mtime_ns, size)``; subsequent calls with
+    an unmodified file return the cached list. Call :func:`clear_cache` to
+    invalidate manually.
+
     Parameters
     ----------
     path : Path
@@ -67,9 +157,20 @@ def collect_imports(path: Path) -> list[ImportInfo]:
         Empty list on parse failure or I/O error.
     """
     try:
+        stat = path.stat()
+    except OSError:
+        return []
+
+    key = (str(path), stat.st_mtime_ns, stat.st_size)
+    cached = _AST_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    try:
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
     except (SyntaxError, OSError):
+        _AST_CACHE[key] = []
         return []
 
     imports: list[ImportInfo] = []
@@ -109,11 +210,15 @@ def collect_imports(path: Path) -> list[ImportInfo]:
                 )
             )
 
+    _AST_CACHE[key] = imports
     return imports
 
 
 def collect_imports_from_dir(directory: Path) -> dict[Path, list[ImportInfo]]:
     """Collect all imports from every ``.py`` file under a directory.
+
+    Skips ``__pycache__``, virtualenvs, build artefacts, and other common
+    noise directories — see :data:`_SKIP_DIRS`.
 
     Parameters
     ----------
@@ -125,12 +230,7 @@ def collect_imports_from_dir(directory: Path) -> dict[Path, list[ImportInfo]]:
     dict[Path, list[ImportInfo]]
         Mapping of file path to its list of parsed imports.
     """
-    result: dict[Path, list[ImportInfo]] = {}
-    for py_file in directory.rglob("*.py"):
-        if "__pycache__" in py_file.parts:
-            continue
-        result[py_file] = collect_imports(py_file)
-    return result
+    return {py_file: collect_imports(py_file) for py_file in iter_py_files(directory)}
 
 
 def is_private_symbol(name: str) -> bool:

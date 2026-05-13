@@ -1,32 +1,33 @@
-from pyarchrules.core.rules.dsl import (
-    AllowedExternalLibsRule,
-    ClassesMustMatchPatternRule,
-    FilesMustBeSnakeCaseRule,
-    FilesMustMatchPatternRule,
-    ForbiddenExternalLibsRule,
-    LayerMustNotImportRule,
-    MaxDepthRule,
-    MustContainFilesRule,
-    MustContainFoldersRule,
-    NoCircularImportsRule,
-    NoFilesInFolderRule,
-    NoPrivateImportsRule,
-    NoRelativeImportsRule,
-    NoTestFilesInRule,
-    NoWildcardImportsRule,
-)
+from dataclasses import replace
+
+from pyarchrules.core.errors import ConfigError
+from pyarchrules.core.rules.dsl import NoCircularImportsRule
+from pyarchrules.core.rules.linter.dependencies_rule import DependenciesRule
+from pyarchrules.core.rules.linter.tree_rule import TreeRule
 from pyarchrules.core.rules.rule import Rule
-from pyarchrules.model.spec.service_spec import ServiceSpec
+from pyarchrules.model.spec.service_spec import ServiceSpec, TreeMode
 
 
 class ServiceRuleSet:
     """Fluent builder for attaching DSL rules to a service.
 
+    The DSL mirrors the ``pyproject.toml`` configuration surface — all three
+    architecture rules (:meth:`tree_structure`, :meth:`dependencies`,
+    :meth:`no_circular_imports`) can be expressed in Python instead of, or in
+    addition to, ``pyproject.toml``.
+
     Each method appends a rule and returns ``self`` so calls can be chained::
 
-        rules.for_service("api")
-            .must_contain_folders(["domain", "infra"])
-            .no_wildcard_imports()
+        rules.for_service("api") \\
+             .tree_structure(["domain", "application", "infrastructure"], mode="strict") \\
+             .dependencies(["application -> domain", "infrastructure -> domain"]) \\
+             .no_circular_imports()
+
+    DSL rules and ``pyproject.toml`` linter rules are evaluated independently
+    (via :meth:`PyArchRules.validate` and :meth:`PyArchRules.check_linter`
+    respectively).  Defining the same rule in both places is allowed — both
+    will run and may report.  Keeping them consistent is the caller's
+    responsibility.
 
     Parameters
     ----------
@@ -38,92 +39,108 @@ class ServiceRuleSet:
         self._service_spec = service_spec
         self._rules: list[Rule] = []
 
-    def must_contain_folders(
-        self, folders: list[str], allow_extra: bool = True
+    # ------------------------------------------------------------------
+    # Rule builders
+    # ------------------------------------------------------------------
+
+    def tree_structure(
+        self,
+        tree: list[str],
+        *,
+        mode: TreeMode | str = TreeMode.EXISTS,
+        allow_files: bool = True,
+        ignore: list[str] | None = None,
     ) -> "ServiceRuleSet":
-        """Assert the service root contains all *folders*.
+        """Validate the service's directory layout.
+
+        Mirrors the ``tree`` / ``tree_mode`` / ``tree_allow_files`` /
+        ``tree_ignore`` keys in ``pyproject.toml``; see
+        :class:`~pyarchrules.core.rules.linter.tree_rule.TreeRule`
+        for the semantics of each mode.
 
         Parameters
         ----------
-        folders : list[str]
-            Folder names that must be present.
-        allow_extra : bool, optional
-            When ``False``, extra folders not in *folders* produce a warning.
+        tree : list[str]
+            Required directory/file paths relative to the service root.
+            Duplicate entries raise :class:`ConfigError`.
+        mode : TreeMode or str, optional
+            ``"exists"`` (default), ``"strict"`` or ``"exact"``.
+        allow_files : bool, optional
+            In ``strict``/``exact`` mode, tolerate loose files (default ``True``).
+        ignore : list[str], optional
+            Glob patterns of directory basenames to skip in
+            ``strict``/``exact`` mode (e.g. ``["__snapshots__", "migrations"]``).
 
         Returns
         -------
         ServiceRuleSet
+
+        Raises
+        ------
+        ConfigError
+            If *mode* is not a valid :class:`TreeMode`, or *tree* contains
+            duplicate entries.
         """
-        self._rules.append(
-            MustContainFoldersRule(
-                service_spec=self._service_spec, required_folders=folders, allow_extra=allow_extra
+        tree = list(tree)
+        seen: set[str] = set()
+        duplicates: list[str] = []
+        for entry in tree:
+            if entry in seen and entry not in duplicates:
+                duplicates.append(entry)
+            seen.add(entry)
+        if duplicates:
+            raise ConfigError(
+                f"Service '{self._service_spec.name}': duplicate entries in 'tree': {duplicates}"
             )
+
+        if isinstance(mode, str):
+            try:
+                mode = TreeMode(mode)
+            except ValueError:
+                valid = ", ".join(f'"{m.value}"' for m in TreeMode)
+                raise ConfigError(
+                    f"Service '{self._service_spec.name}': invalid tree_mode "
+                    f"'{mode}'. Valid values: {valid}"
+                ) from None
+
+        spec = replace(
+            self._service_spec,
+            tree=tree,
+            tree_mode=mode,
+            tree_allow_files=allow_files,
+            tree_ignore=list(ignore or []),
         )
+        self._rules.append(TreeRule(spec))
         return self
 
-    def must_contain_files(self, files: list[str]) -> "ServiceRuleSet":
-        """Assert the service root contains all *files*.
+    def dependencies(self, rules: list[str]) -> "ServiceRuleSet":
+        """Constrain internal import flow within the service.
+
+        Mirrors the ``dependencies`` key in ``pyproject.toml``.  Strings use
+        the same grammar (``"source -> target"``) and are parsed by
+        :meth:`DependenciesRule.parse_rules`; malformed or overlapping rules
+        raise :class:`ConfigError` immediately.
 
         Parameters
         ----------
-        files : list[str]
-            File names that must be present.
+        rules : list[str]
+            Strings like ``"api -> domain"``.
 
         Returns
         -------
         ServiceRuleSet
+
+        Raises
+        ------
+        ConfigError
+            On malformed syntax, ``* -> *``, invalid paths, or overlapping pairs.
         """
-        self._rules.append(MustContainFilesRule(self._service_spec, files=files))
-        return self
+        rules = list(rules)
+        # Eager validation — same code path as the TOML loader.
+        DependenciesRule.parse_rules(rules, service_name=self._service_spec.name)
 
-    def files_must_match_pattern(self, folder: str, pattern: str) -> "ServiceRuleSet":
-        """Assert every file in *folder* matches the glob *pattern*.
-
-        Parameters
-        ----------
-        folder : str
-            Sub-path relative to the service root.
-        pattern : str
-            Glob pattern, e.g. ``"*_service.py"``.
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(
-            FilesMustMatchPatternRule(self._service_spec, folder=folder, pattern=pattern)
-        )
-        return self
-
-    def no_files_in_folder(self, folder: str) -> "ServiceRuleSet":
-        """Assert *folder* contains only subdirectories — no direct files.
-
-        Parameters
-        ----------
-        folder : str
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(NoFilesInFolderRule(self._service_spec, folder=folder))
-        return self
-
-    def max_depth(self, depth: int, folder: str | None = None) -> "ServiceRuleSet":
-        """Assert the directory tree does not exceed *depth* nesting levels.
-
-        Parameters
-        ----------
-        depth : int
-            Maximum allowed nesting depth (root = 0).
-        folder : str, optional
-            Restrict the check to this sub-path; defaults to the service root.
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(MaxDepthRule(self._service_spec, max_depth=depth, folder=folder))
+        spec = replace(self._service_spec, dependencies=rules)
+        self._rules.append(DependenciesRule(spec))
         return self
 
     def no_circular_imports(self, folder: str | None = None) -> "ServiceRuleSet":
@@ -141,154 +158,11 @@ class ServiceRuleSet:
         self._rules.append(NoCircularImportsRule(self._service_spec, folder=folder))
         return self
 
-    def no_wildcard_imports(self, folder: str | None = None) -> "ServiceRuleSet":
-        """Forbid ``from x import *``.
+    # ------------------------------------------------------------------
+    # Internal
+    # ------------------------------------------------------------------
 
-        Parameters
-        ----------
-        folder : str, optional
-            Restrict the scan to this sub-path; defaults to the service root.
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(NoWildcardImportsRule(self._service_spec, folder=folder))
-        return self
-
-    def no_private_imports(self, folder: str | None = None) -> "ServiceRuleSet":
-        """Forbid importing ``_private`` symbols from foreign modules.
-
-        Parameters
-        ----------
-        folder : str, optional
-            Restrict the scan to this sub-path; defaults to the service root.
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(NoPrivateImportsRule(self._service_spec, folder=folder))
-        return self
-
-    def no_relative_imports_in(self, folder: str | None = None) -> "ServiceRuleSet":
-        """Forbid relative imports (``from . import ...``) inside *folder* or the whole service.
-
-        Parameters
-        ----------
-        folder : str, optional
-            Restrict the scan to this sub-path; defaults to the service root.
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(NoRelativeImportsRule(self._service_spec, folder=folder))
-        return self
-
-    def allowed_external_libs(
-        self, folder: str | None = None, *, libs: list[str]
-    ) -> "ServiceRuleSet":
-        """Allow only the listed external libraries inside *folder* or the whole service.
-
-        Parameters
-        ----------
-        folder : str, optional
-            Restrict the scan to this sub-path; defaults to the service root.
-        libs : list[str]
-            Allowed third-party package names.
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(AllowedExternalLibsRule(self._service_spec, libs=libs, folder=folder))
-        return self
-
-    def forbidden_external_libs(
-        self, folder: str | None = None, *, libs: list[str]
-    ) -> "ServiceRuleSet":
-        """Forbid specific external libraries inside *folder* or the whole service.
-
-        Parameters
-        ----------
-        folder : str, optional
-            Restrict the scan to this sub-path; defaults to the service root.
-        libs : list[str]
-            Forbidden third-party package names.
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(ForbiddenExternalLibsRule(self._service_spec, libs=libs, folder=folder))
-        return self
-
-    def layer_must_not_import(self, source: str, target: str) -> "ServiceRuleSet":
-        """Hard-forbid any import from *source* layer into *target* layer.
-
-        Parameters
-        ----------
-        source : str
-            Folder that must not import from *target*.
-        target : str
-            Folder that must not be imported by *source*.
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(LayerMustNotImportRule(self._service_spec, source=source, target=target))
-        return self
-
-    def files_must_be_snake_case(self, folder: str | None = None) -> "ServiceRuleSet":
-        """Assert all ``.py`` files use ``snake_case`` naming.
-
-        Parameters
-        ----------
-        folder : str, optional
-            Restrict the scan to this sub-path; defaults to the service root.
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(FilesMustBeSnakeCaseRule(self._service_spec, folder=folder))
-        return self
-
-    def classes_must_match_pattern(self, folder: str, pattern: str) -> "ServiceRuleSet":
-        """Assert every class in *folder* matches the regexp *pattern*.
-
-        Parameters
-        ----------
-        folder : str
-        pattern : str
-            Regular expression applied to class names, e.g. ``r".*Service$"``.
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(
-            ClassesMustMatchPatternRule(self._service_spec, folder=folder, pattern=pattern)
-        )
-        return self
-
-    def no_test_files_in(self, folder: str) -> "ServiceRuleSet":
-        """Assert no test files (``test_*.py`` / ``*_test.py``) exist in *folder*.
-
-        Parameters
-        ----------
-        folder : str
-
-        Returns
-        -------
-        ServiceRuleSet
-        """
-        self._rules.append(NoTestFilesInRule(self._service_spec, folder=folder))
-        return self
-
-    def _collect_violations(self) -> list:
+    def collect_violations(self) -> list:
         violations = []
         for rule in self._rules:
             violations.extend(rule.validate())

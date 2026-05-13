@@ -42,59 +42,11 @@ class TestSpecLoader:
         assert "root" in spec.services
         assert spec.services["root"].path == "."
 
-    # -------------------------------------------------------------------------
-    # Global options
-    # -------------------------------------------------------------------------
-
-    def test_default_validate_paths_is_true(self, make_project):
-        """Default validate_paths is True when not specified."""
-        project = make_project(with_pyproject=True, services={"svc": "services/svc"})
-
-        spec = SpecLoader(project.root).load()
-
-        assert spec.validate_paths is True
-
-    def test_parses_validate_paths_false(self, make_project):
-        """validate_paths = false is correctly parsed."""
-        project = make_project(
-            with_pyproject=True,
-            services={"svc": "services/svc"},
-            extra_config={"validate_paths": False},
-            create_service_dirs=True,
-        )
-
-        spec = SpecLoader(project.root).load()
-
-        assert spec.validate_paths is False
 
     # -------------------------------------------------------------------------
     # Service options
     # -------------------------------------------------------------------------
 
-    def test_parses_allowed_service_dependencies(self, tmp_test_dir):
-        """allowed_service_dependencies is parsed correctly."""
-        root = tmp_test_dir / "deps_test"
-        root.mkdir(parents=True, exist_ok=True)
-        (root / "services/api").mkdir(parents=True)
-        (root / "services/auth").mkdir(parents=True)
-
-        toml_content = """
-[project]
-name = "test"
-
-[tool.pyarchrules.services.api]
-path = "services/api"
-allowed_service_dependencies = ["auth"]
-
-[tool.pyarchrules.services.auth]
-path = "services/auth"
-"""
-        (root / "pyproject.toml").write_text(toml_content, encoding="utf-8")
-
-        spec = SpecLoader(root).load()
-
-        assert spec.services["api"].allowed_service_dependencies == ["auth"]
-        assert spec.services["auth"].allowed_service_dependencies == []
 
     def test_parses_internal_dependencies(self, tmp_test_dir):
         """dependencies (internal layer rules) is parsed correctly."""
@@ -172,7 +124,7 @@ dependencies = ["api -> domain", "domain -> infra"]
             SpecLoader(project.root).load()
 
     def test_nonexistent_path_raises_error(self, make_project):
-        """Raises error when path doesn't exist and validate_paths=True."""
+        """Raises error when path doesn't exist."""
         project = make_project(
             with_pyproject=True,
             services={"svc": "nonexistent"},
@@ -182,23 +134,49 @@ dependencies = ["api -> domain", "domain -> infra"]
         with pytest.raises(PyArchError, match="doesn't exist"):
             SpecLoader(project.root).load()
 
-    def test_nonexistent_path_allowed_when_validation_disabled(self, tmp_test_dir):
-        """Allows nonexistent path when validate_paths=False."""
-        root = tmp_test_dir / "no_validate"
+    def test_string_shorthand_is_rejected(self, tmp_test_dir):
+        """Service value must be a table — string shorthand is no longer accepted."""
+        root = tmp_test_dir / "string_shorthand"
         root.mkdir(parents=True, exist_ok=True)
+        (root / "svc").mkdir(parents=True)
 
         toml_content = """
 [project]
 name = "test"
 
-[tool.pyarchrules]
-validate_paths = false
-
-[tool.pyarchrules.services.svc]
-path = "nonexistent"
+[tool.pyarchrules.services]
+svc = "svc"
 """
         (root / "pyproject.toml").write_text(toml_content, encoding="utf-8")
 
-        spec = SpecLoader(root).load()
+        with pytest.raises(PyArchError, match="must be a table"):
+            SpecLoader(root).load()
 
-        assert spec.services["svc"].path == "nonexistent"
+    def test_unknown_project_key_rejected(self, make_project):
+        """Removed project keys (root, validate_paths) are no longer accepted."""
+        project = make_project(
+            with_pyproject=True,
+            services={"svc": "services/svc"},
+            extra_config={"validate_paths": True},
+        )
+
+        with pytest.raises(PyArchError, match="Unknown key"):
+            SpecLoader(project.root).load()
+
+    def test_parses_no_circular_imports(self, make_project):
+        """no_circular_imports = true is parsed onto ServiceSpec."""
+        project = make_project(
+            with_pyproject=False,
+            services={"svc": "svc"},
+        )
+        project.write_pyproject({
+            "project": {"name": "test"},
+            "tool": {"pyarchrules": {
+                "services": {"svc": {"path": "svc", "no_circular_imports": True}},
+            }},
+        })
+        project.mkdir("svc")
+
+        spec = SpecLoader(project.root).load()
+
+        assert spec.services["svc"].no_circular_imports is True

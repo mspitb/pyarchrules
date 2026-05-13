@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pyarchrules.model.spec.project_spec import ProjectSpec
 
 
-class DSLRegistry(BaseRegistry[ServiceRuleSet]):
+class DSLRegistry(BaseRegistry):
     """Registry for DSL-defined :class:`~pyarchrules.core.rules.rule_set.ServiceRuleSet` objects.
 
     One ``ServiceRuleSet`` is pre-registered per service defined in the
@@ -28,8 +28,8 @@ class DSLRegistry(BaseRegistry[ServiceRuleSet]):
         for service_name, service_spec in project_spec.services.items():
             self._store[service_name] = ServiceRuleSet(service_spec)
 
-    def _collect_violations(self) -> list:
+    def collect_violations(self) -> list:
         violations = []
         for rule_set in self._store.values():
-            violations.extend(rule_set._collect_violations())  # noqa
+            violations.extend(rule_set.collect_violations())
         return violations

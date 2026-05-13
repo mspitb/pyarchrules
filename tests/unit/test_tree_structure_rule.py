@@ -319,7 +319,6 @@ class TestTreeModeSpecLoader:
         project.write_pyproject({
             "project": {"name": "test"},
             "tool": {"pyarchrules": {
-                "validate_paths": False,
                 "services": {"svc": {"path": ".", "tree_mode": "strict"}},
             }},
         })
@@ -332,7 +331,6 @@ class TestTreeModeSpecLoader:
         project.write_pyproject({
             "project": {"name": "test"},
             "tool": {"pyarchrules": {
-                "validate_paths": False,
                 "services": {"svc": {"path": ".", "tree_mode": "exact"}},
             }},
         })
@@ -347,7 +345,6 @@ class TestTreeModeSpecLoader:
         project.write_pyproject({
             "project": {"name": "test"},
             "tool": {"pyarchrules": {
-                "validate_paths": False,
                 "services": {"svc": {"path": ".", "tree_mode": "turbo"}},
             }},
         })
