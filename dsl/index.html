@@ -9,6 +9,8 @@
         <meta name="description" content="Architecture validation library for Python projects">
       
       
+        <meta name="author" content="Sergei Mikheev">
+      
       
         <link rel="canonical" href="https://mspitb.github.io/pyarchrules/dsl/">
       
@@ -23,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -176,6 +178,8 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
       
     </form>
     <div class="md-search__output">
@@ -450,10 +454,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#must_contain_foldersfolders-allow_extratrue" class="md-nav__link">
+  <a href="#config-less-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        must_contain_folders(folders, allow_extra=True)
+        Config-less usage
       
     </span>
   </a>
@@ -469,14 +473,58 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="validate()">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check_linter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check_linter()
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rules-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rules reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rules reference">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
+  <a href="#tree_structuretree-modeexists-allow_filestrue-ignorenone" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Parameters
+        tree_structure(tree, *, mode="exists", allow_files=True, ignore=None)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependenciesrules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dependencies(rules)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#no_circular_importsfoldernone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        no_circular_imports(folder=None)
       
     </span>
   </a>
@@ -489,10 +537,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-the-dsl-in-pytest" class="md-nav__link">
+  <a href="#toml-dsl-coexistence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using the DSL in pytest
+        TOML + DSL coexistence
       
     </span>
   </a>
@@ -500,10 +548,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#combining-dsl-and-linter-rules" class="md-nav__link">
+  <a href="#full-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Combining DSL and linter rules
+        Full example
       
     </span>
   </a>
@@ -511,10 +559,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inspecting-services" class="md-nav__link">
+  <a href="#reporting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Inspecting services
+        Reporting
       
     </span>
   </a>
@@ -522,6 +570,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#result-objects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result objects
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Result objects">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#ruleevalresult" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -531,8 +591,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#ruleviolation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -542,12 +602,28 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#error-handling" class="md-nav__link">
+  <a href="#exceptions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Error handling
+        Exceptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#package-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package version
       
     </span>
   </a>
@@ -665,10 +741,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#must_contain_foldersfolders-allow_extratrue" class="md-nav__link">
+  <a href="#config-less-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        must_contain_folders(folders, allow_extra=True)
+        Config-less usage
       
     </span>
   </a>
@@ -684,14 +760,58 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="validate()">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check_linter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check_linter()
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rules-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rules reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rules reference">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
+  <a href="#tree_structuretree-modeexists-allow_filestrue-ignorenone" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Parameters
+        tree_structure(tree, *, mode="exists", allow_files=True, ignore=None)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependenciesrules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dependencies(rules)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#no_circular_importsfoldernone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        no_circular_imports(folder=None)
       
     </span>
   </a>
@@ -704,10 +824,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-the-dsl-in-pytest" class="md-nav__link">
+  <a href="#toml-dsl-coexistence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using the DSL in pytest
+        TOML + DSL coexistence
       
     </span>
   </a>
@@ -715,10 +835,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#combining-dsl-and-linter-rules" class="md-nav__link">
+  <a href="#full-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Combining DSL and linter rules
+        Full example
       
     </span>
   </a>
@@ -726,10 +846,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inspecting-services" class="md-nav__link">
+  <a href="#reporting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Inspecting services
+        Reporting
       
     </span>
   </a>
@@ -737,6 +857,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#result-objects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result objects
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Result objects">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#ruleevalresult" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -746,8 +878,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#ruleviolation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -757,12 +889,28 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#error-handling" class="md-nav__link">
+  <a href="#exceptions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Error handling
+        Exceptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#package-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package version
       
     </span>
   </a>
@@ -790,78 +938,72 @@
 
 
 <h1 id="python-dsl">Python DSL</h1>
-<p>The Python DSL lets you express architecture rules directly in Python code,
-typically inside your test suite. This gives you full language power —
-loops, conditionals, parameterisation — and tight integration with pytest.</p>
+<p>The Python DSL lets you express architecture rules directly in Python,
+typically inside your test suite. All three per-service rules
+(<code>tree_structure</code>, <code>dependencies</code>, <code>no_circular_imports</code>) are available as
+fluent methods on <code>ServiceRuleSet</code>, mirroring the <code>pyproject.toml</code> keys.</p>
+<blockquote>
+<p><strong>Project-level rules (TOML only).</strong> <code>isolate_services</code> is a cross-service
+rule and the DSL is per-service, so it can only be configured in
+<code>pyproject.toml</code>. See
+<a href="../configuration/#service-isolation">Configuration → Service isolation</a>.</p>
+</blockquote>
+<p>The CLI (<code>pyarchrules check</code>) runs only the TOML rules; your test suite runs
+only the DSL rules.</p>
 <hr />
 <h2 id="setup">Setup</h2>
 <pre><code class="language-python">from pyarchrules import PyArchRules
 
 # Discovers pyproject.toml by walking up from the current directory
 rules = PyArchRules()
+
+# Or pass an explicit path (file inside the project, or the project root)
+rules = PyArchRules(&quot;/path/to/project&quot;)
 </code></pre>
-<p>You can also pass an explicit path:</p>
-<pre><code class="language-python">rules = PyArchRules(&quot;/path/to/project&quot;)
-</code></pre>
-<p>Services must be registered in <code>[tool.pyarchrules.services]</code>.
-The DSL layers additional in-code rules on top.</p>
+<p>Services declared in <code>[tool.pyarchrules.services]</code> are available via
+<code>for_service(...)</code>. If you don't want a TOML config at all, use
+<a href="#config-less-usage"><code>PyArchRules.from_services</code></a>.</p>
 <hr />
 <h2 id="for_servicename"><code>for_service(name)</code></h2>
-<p>Entry point for attaching rules to a service. Returns a <code>ServiceRuleSet</code> for method chaining.</p>
-<pre><code class="language-python">rule_set = rules.for_service(&quot;backend&quot;)
+<p>Returns a <code>ServiceRuleSet</code> for method chaining. Raises <code>ServiceNotFoundError</code>
+if the service is not declared (either in <code>pyproject.toml</code> or via
+<code>from_services</code>).</p>
+<pre><code class="language-python">rules.for_service(&quot;backend&quot;) \
+     .tree_structure([&quot;domain&quot;, &quot;application&quot;, &quot;infrastructure&quot;], mode=&quot;strict&quot;) \
+     .dependencies([&quot;application -&gt; domain&quot;, &quot;infrastructure -&gt; domain&quot;]) \
+     .no_circular_imports()
 </code></pre>
-<p>Raises <code>PyArchError</code> if the service is not found in <code>pyproject.toml</code>.</p>
 <hr />
-<h2 id="must_contain_foldersfolders-allow_extratrue"><code>must_contain_folders(folders, allow_extra=True)</code></h2>
-<p>Assert that the service directory contains specific sub-folders.</p>
-<pre><code class="language-python">rules.for_service(&quot;backend&quot;).must_contain_folders([&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;])
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>folders</code></td>
-<td>list[str]</td>
-<td><em>(required)</em></td>
-<td>Folders that must exist in the service root.</td>
-</tr>
-<tr>
-<td><code>allow_extra</code></td>
-<td>bool</td>
-<td><code>True</code></td>
-<td>When <code>False</code>, unlisted folders are a violation.</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Strict layout (no extra folders):</strong></p>
-<pre><code class="language-python">rules.for_service(&quot;backend&quot;).must_contain_folders(
-    [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;],
-    allow_extra=False,
+<h2 id="config-less-usage">Config-less usage</h2>
+<p><code>PyArchRules.from_services</code> builds an instance without requiring a
+<code>[tool.pyarchrules]</code> table — useful when your test suite is the single source
+of truth.</p>
+<pre><code class="language-python">from pathlib import Path
+from pyarchrules import PyArchRules
+
+rules = PyArchRules.from_services(
+    {&quot;backend&quot;: &quot;src/backend&quot;, &quot;frontend&quot;: &quot;src/frontend&quot;},
+    project_root=Path(__file__).parent.parent,  # defaults to cwd
 )
+
+rules.for_service(&quot;backend&quot;).no_circular_imports()
+rules.validate()
 </code></pre>
+<p><code>PyArchRules.from_spec(spec, project_root=...)</code> is a power-user variant that
+accepts a pre-built <code>ProjectSpec</code>.</p>
 <hr />
 <h2 id="validate"><code>validate()</code></h2>
 <p>Runs all registered DSL rules and returns a <code>RuleEvalResult</code>.</p>
 <pre><code class="language-python">result = rules.validate()
 </code></pre>
-<p>By default raises <code>PyArchError</code> on any violation. To inspect programmatically:</p>
+<p>By default raises <code>ValidationError</code> on any error-severity violation. To inspect
+programmatically:</p>
 <pre><code class="language-python">result = rules.validate(raise_on_violation=False, verbose=False)
 
-print(f&quot;Errors:   {result.error_count}&quot;)
-print(f&quot;Warnings: {result.warning_count}&quot;)
-print(f&quot;Valid:    {result.is_valid}&quot;)
-
 for v in result.violations:
-    print(f&quot;[{v.severity}] {v.service_name} / {v.rule_name}: {v.message}&quot;)
+    location = f&quot; ({v.file}:{v.line})&quot; if v.file else &quot;&quot;
+    print(f&quot;[{v.severity}] {v.service_name} / {v.rule_name}{location}: {v.message}&quot;)
 </code></pre>
-<h3 id="parameters">Parameters</h3>
 <table>
 <thead>
 <tr>
@@ -876,36 +1018,133 @@ for v in result.violations:
 <td><code>raise_on_violation</code></td>
 <td>bool</td>
 <td><code>True</code></td>
-<td>Raise <code>PyArchError</code> on violations.</td>
+<td>Raise <code>ValidationError</code> on errors.</td>
 </tr>
 <tr>
 <td><code>verbose</code></td>
 <td>bool</td>
 <td><code>True</code></td>
-<td>Print violation summary to stdout.</td>
+<td>Forward the result to <em>reporter</em>.</td>
 </tr>
 <tr>
 <td><code>reporter</code></td>
-<td>ViolationReporter or None</td>
+<td><code>ViolationReporter</code> or <code>None</code></td>
 <td><code>None</code></td>
-<td>Custom reporter; defaults to <code>ConsoleViolationReporter</code>.</td>
-</tr>
-<tr>
-<td><code>run_dsl</code></td>
-<td>bool</td>
-<td><code>True</code></td>
-<td>Execute DSL rules.</td>
-</tr>
-<tr>
-<td><code>run_linter</code></td>
-<td>bool</td>
-<td><code>False</code></td>
-<td>Also run TOML-based tree and dependency rules.</td>
+<td>Custom reporter; default writes to stderr.</td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2 id="using-the-dsl-in-pytest">Using the DSL in pytest</h2>
+<h2 id="check_linter"><code>check_linter()</code></h2>
+<p>Runs the rules declared in <code>pyproject.toml</code> (<code>tree_structure</code>, <code>dependencies</code>,
+<code>no_circular_imports</code> when its TOML key is set). Defaults are inverted
+compared to <code>validate()</code> so the CLI can format output itself:
+<code>raise_on_violation=False</code>, <code>verbose=False</code>.</p>
+<pre><code class="language-python">result = rules.check_linter()
+if not result.is_valid:
+    for v in result.violations:
+        ...
+</code></pre>
+<hr />
+<h2 id="rules-reference">Rules reference</h2>
+<p>All three per-service rules accept the same configuration shape as their
+<code>pyproject.toml</code> counterparts and produce identical <code>RuleViolation</code> objects.
+See <a href="../configuration/">Configuration</a> for the underlying semantics of each
+rule. (The project-wide <code>service_isolation</code> rule is TOML-only — see the
+callout at the top of this page.)</p>
+<h3 id="tree_structuretree-modeexists-allow_filestrue-ignorenone"><code>tree_structure(tree, *, mode="exists", allow_files=True, ignore=None)</code></h3>
+<p>Validate the service's directory layout.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tree</code></td>
+<td><code>list[str]</code></td>
+<td>—</td>
+<td>Required directory/file paths, relative to the service root. Duplicate entries raise <code>ConfigError</code>.</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td><code>"exists"</code> | <code>"strict"</code> | <code>"exact"</code></td>
+<td><code>"exists"</code></td>
+<td>Strictness — see <a href="../configuration/#strictness-levels">Configuration</a>.</td>
+</tr>
+<tr>
+<td><code>allow_files</code></td>
+<td>bool</td>
+<td><code>True</code></td>
+<td>In <code>strict</code>/<code>exact</code> mode, tolerate loose files.</td>
+</tr>
+<tr>
+<td><code>ignore</code></td>
+<td><code>list[str]</code> or <code>None</code></td>
+<td><code>None</code></td>
+<td>Glob patterns of directory basenames to skip in <code>strict</code>/<code>exact</code> mode (<code>["__snapshots__", "migrations_*"]</code>).</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-python">rules.for_service(&quot;backend&quot;).tree_structure(
+    [&quot;domain&quot;, &quot;application&quot;, &quot;infrastructure&quot;],
+    mode=&quot;strict&quot;,
+    ignore=[&quot;__snapshots__&quot;, &quot;migrations_*&quot;],
+)
+</code></pre>
+<p>Raises <code>ConfigError</code> if <code>mode</code> is not a valid <code>TreeMode</code>, or if <code>tree</code>
+contains duplicate entries.</p>
+<h3 id="dependenciesrules"><code>dependencies(rules)</code></h3>
+<p>Constrain internal import flow within the service.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rules</code></td>
+<td><code>list[str]</code></td>
+<td>Strings using the same grammar as the TOML key, e.g. <code>"api -&gt; domain"</code>.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-python">rules.for_service(&quot;backend&quot;).dependencies([
+    &quot;application -&gt; domain&quot;,
+    &quot;infrastructure -&gt; domain&quot;,
+    &quot;* -&gt; shared&quot;,
+])
+</code></pre>
+<p>Strings are parsed eagerly; malformed syntax, <code>* -&gt; *</code>, and invalid paths
+raise <code>ConfigError</code> immediately. Overlapping rule pairs (e.g.
+<code>"api -&gt; domain"</code> + <code>"api/v1 -&gt; domain"</code>) are reported at <code>validate()</code> time
+as <strong>warnings</strong>, not errors — see
+<a href="../configuration/#overlapping-rules-warning">Configuration → Overlapping rules</a>.</p>
+<h3 id="no_circular_importsfoldernone"><code>no_circular_imports(folder=None)</code></h3>
+<p>Detect circular import chains within the service or a folder. Uses AST-based
+DFS cycle detection.</p>
+<pre><code class="language-python">rules.for_service(&quot;backend&quot;).no_circular_imports()
+rules.for_service(&quot;backend&quot;).no_circular_imports(&quot;domain&quot;)
+</code></pre>
+<hr />
+<h2 id="toml-dsl-coexistence">TOML + DSL coexistence</h2>
+<p>The two surfaces run independently:</p>
+<ul>
+<li><code>pyarchrules check</code> (CLI) → only TOML-declared rules, via <code>check_linter()</code>.</li>
+<li><code>validate()</code> (your test suite) → only DSL-declared rules.</li>
+</ul>
+<p>If you declare the same rule kind in both places for the same service (e.g.
+<code>tree</code> in TOML <em>and</em> <code>tree_structure(...)</code> in DSL), both rules run and both
+can report.</p>
+<hr />
+<h2 id="full-example">Full example</h2>
 <pre><code class="language-python"># tests/test_architecture.py
 import pytest
 from pyarchrules import PyArchRules
@@ -916,44 +1155,64 @@ def arch():
     return PyArchRules()
 
 
-def test_backend_structure(arch):
-    arch.for_service(&quot;backend&quot;).must_contain_folders([&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;])
+def test_backend_no_cycles(arch):
+    arch.for_service(&quot;backend&quot;).no_circular_imports()
     arch.validate()
 
 
-def test_shared_structure(arch):
-    arch.for_service(&quot;shared&quot;).must_contain_folders([&quot;models&quot;, &quot;utils&quot;])
+@pytest.mark.parametrize(&quot;service&quot;, [&quot;catalog&quot;, &quot;orders&quot;, &quot;auth&quot;])
+def test_no_cycles(arch, service):
+    arch.for_service(service).no_circular_imports()
     arch.validate()
 </code></pre>
+<p>For folder-layout and import-direction rules expressed in TOML, see
+<a href="../configuration/">Configuration</a>.</p>
 <hr />
-<h2 id="combining-dsl-and-linter-rules">Combining DSL and linter rules</h2>
-<pre><code class="language-python">rules.for_service(&quot;backend&quot;).must_contain_folders([&quot;api&quot;, &quot;domain&quot;])
+<h2 id="reporting">Reporting</h2>
+<p><code>PyArchRules</code> ships one reporter, <code>ConsoleViolationReporter</code>, with two formats:</p>
+<pre><code class="language-python">import sys
+from pyarchrules import PyArchRules
+from pyarchrules.core.reporting import ConsoleViolationReporter
 
-result = rules.validate(
-    run_dsl=True,
-    run_linter=True,
-    raise_on_violation=False,
-    verbose=False,
-)
+rules = PyArchRules()
+rules.validate(reporter=ConsoleViolationReporter(stream=sys.stdout, format=&quot;json&quot;))
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stream</code></td>
+<td><code>TextIO</code> or <code>None</code></td>
+<td><code>sys.stderr</code></td>
+<td>Output destination.</td>
+</tr>
+<tr>
+<td><code>format</code></td>
+<td><code>"text"</code> or <code>"json"</code></td>
+<td><code>"text"</code></td>
+<td>Human-readable lines or a JSON document.</td>
+</tr>
+</tbody>
+</table>
+<p>Implementing a custom reporter is one method:</p>
+<pre><code class="language-python">class CountingReporter:
+    def __init__(self):
+        self.errors = 0
 
-assert result.is_valid, &quot;Violations:\n&quot; + &quot;\n&quot;.join(
-    f&quot;  {v.service_name}: {v.message}&quot; for v in result.violations
-)
+    def report(self, result):
+        self.errors += result.error_count
 </code></pre>
 <hr />
-<h2 id="inspecting-services">Inspecting services</h2>
-<pre><code class="language-python">rules = PyArchRules()
-print(rules.services)
-# {'backend': 'src/backend', 'shared': 'services/shared'}
-</code></pre>
-<p><strong>Parameterised tests:</strong></p>
-<pre><code class="language-python">@pytest.mark.parametrize(&quot;service&quot;, [&quot;catalog&quot;, &quot;orders&quot;, &quot;auth&quot;])
-def test_standard_layout(arch, service):
-    arch.for_service(service).must_contain_folders([&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;])
-    arch.validate()
-</code></pre>
-<hr />
-<h2 id="ruleevalresult"><code>RuleEvalResult</code></h2>
+<h2 id="result-objects">Result objects</h2>
+<h3 id="ruleevalresult"><code>RuleEvalResult</code></h3>
+<p>Frozen <code>@dataclass</code>.</p>
 <table>
 <thead>
 <tr>
@@ -965,28 +1224,28 @@ def test_standard_layout(arch, service):
 <tbody>
 <tr>
 <td><code>violations</code></td>
-<td>list[RuleViolation]</td>
+<td><code>list[RuleViolation]</code></td>
 <td>All violations collected.</td>
 </tr>
 <tr>
 <td><code>is_valid</code></td>
-<td>bool</td>
+<td><code>bool</code></td>
 <td><code>True</code> when there are no violations.</td>
 </tr>
 <tr>
 <td><code>error_count</code></td>
-<td>int</td>
+<td><code>int</code></td>
 <td>Number of <code>"error"</code> severity violations.</td>
 </tr>
 <tr>
 <td><code>warning_count</code></td>
-<td>int</td>
+<td><code>int</code></td>
 <td>Number of <code>"warning"</code> severity violations.</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="ruleviolation"><code>RuleViolation</code></h2>
+<h3 id="ruleviolation"><code>RuleViolation</code></h3>
+<p>Frozen <code>@dataclass</code>.</p>
 <table>
 <thead>
 <tr>
@@ -998,47 +1257,91 @@ def test_standard_layout(arch, service):
 <tbody>
 <tr>
 <td><code>rule_name</code></td>
-<td>str</td>
-<td>Identifier of the triggering rule.</td>
+<td><code>str</code></td>
+<td>Identifier of the rule that triggered (<code>tree_structure</code>, <code>internal_dependencies</code>, <code>no_circular_imports</code>, <code>service_isolation</code>).</td>
 </tr>
 <tr>
 <td><code>service_name</code></td>
-<td>str</td>
+<td><code>str</code></td>
 <td>Name of the affected service.</td>
 </tr>
 <tr>
 <td><code>severity</code></td>
-<td>str</td>
-<td><code>"error"</code> or <code>"warning"</code>.</td>
+<td><code>"error"</code> | <code>"warning"</code></td>
+<td>Severity of the finding.</td>
 </tr>
 <tr>
 <td><code>message</code></td>
-<td>str</td>
+<td><code>str</code></td>
 <td>Human-readable description.</td>
 </tr>
 <tr>
+<td><code>file</code></td>
+<td><code>str</code> or <code>None</code></td>
+<td>Offending source file (relative to project root) when applicable.</td>
+</tr>
+<tr>
+<td><code>line</code></td>
+<td><code>int</code> or <code>None</code></td>
+<td>1-based line number when applicable.</td>
+</tr>
+<tr>
 <td><code>details</code></td>
-<td>dict or None</td>
-<td>Machine-readable details (paths, module names, etc.).</td>
+<td><code>dict</code></td>
+<td>Machine-readable extra context (cycle paths, conflicting rules, etc.).</td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2 id="error-handling">Error handling</h2>
-<pre><code class="language-python">from pyarchrules.core.errors import PyArchError
+<h2 id="exceptions">Exceptions</h2>
+<p>All exceptions inherit from <code>pyarchrules.core.errors.PyArchError</code>. Catch the
+base class to handle anything; catch a subclass for fine-grained control.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Raised when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PyArchError</code></td>
+<td>Base class — never raised directly.</td>
+</tr>
+<tr>
+<td><code>ConfigError</code></td>
+<td>Bad <code>pyproject.toml</code>: malformed table, unknown keys, invalid <code>dependencies</code> strings, missing service path, path outside project root.</td>
+</tr>
+<tr>
+<td><code>ValidationError</code></td>
+<td><code>validate(raise_on_violation=True)</code> (default) when at least one error-severity violation is found.</td>
+</tr>
+<tr>
+<td><code>ServiceNotFoundError</code></td>
+<td><code>for_service("name")</code> when no such service is declared.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-python">from pyarchrules import PyArchRules
+from pyarchrules.core.errors import ConfigError, ValidationError, ServiceNotFoundError
 
 try:
-    rules = PyArchRules()
-    rules.for_service(&quot;nonexistent&quot;)
-except PyArchError as e:
-    print(f&quot;Configuration error: {e}&quot;)
+    PyArchRules().for_service(&quot;backend&quot;).no_circular_imports().validate()
+except ConfigError as e:
+    print(f&quot;Bad config: {e}&quot;)
+except ServiceNotFoundError as e:
+    print(f&quot;Unknown service: {e}&quot;)
+except ValidationError as e:
+    print(f&quot;Architecture violations: {e}&quot;)
 </code></pre>
-<p>Common causes:</p>
-<ul>
-<li><code>pyproject.toml</code> not found in the directory tree</li>
-<li>Service name not registered in <code>[tool.pyarchrules.services]</code></li>
-<li>Validation failure when <code>raise_on_violation=True</code></li>
-</ul>
+<hr />
+<h2 id="package-version">Package version</h2>
+<pre><code class="language-python">import pyarchrules
+
+print(pyarchrules.__version__)
+</code></pre>
+<p><code>__version__</code> is derived from package metadata at import time, so it always
+matches the installed version.</p>
 
 
 
@@ -1069,9 +1372,53 @@ except PyArchError as e:
       
         <footer class="md-footer">
   
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../cli/" class="md-footer__link md-footer__link--prev" aria-label="Previous: CLI Reference">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                CLI Reference
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../use-cases/" class="md-footer__link md-footer__link--next" aria-label="Next: Use Cases">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Use Cases
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
       <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2024-2026 Sergei Mikheev
+    </div>
   
   
     Made with
@@ -1094,7 +1441,7 @@ except PyArchError as e:
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.top", "navigation.instant"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.top", "navigation.instant", "navigation.sections", "navigation.footer", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>

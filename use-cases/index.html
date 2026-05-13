@@ -9,6 +9,8 @@
         <meta name="description" content="Architecture validation library for Python projects">
       
       
+        <meta name="author" content="Sergei Mikheev">
+      
       
         <link rel="canonical" href="https://mspitb.github.io/pyarchrules/use-cases/">
       
@@ -23,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -176,6 +178,8 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
       
     </form>
     <div class="md-search__output">
@@ -488,10 +492,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#enforcing-consistent-structure-with-parameterised-tests" class="md-nav__link">
+  <a href="#catching-circular-imports-across-all-services" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Enforcing consistent structure with parameterised tests
+        Catching circular imports across all services
       
     </span>
   </a>
@@ -604,10 +608,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#enforcing-consistent-structure-with-parameterised-tests" class="md-nav__link">
+  <a href="#catching-circular-imports-across-all-services" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Enforcing consistent structure with parameterised tests
+        Catching circular imports across all services
       
     </span>
   </a>
@@ -646,7 +650,8 @@
 
 
 <h1 id="use-cases">Use Cases</h1>
-<p>Practical patterns for the most common architectural challenges.</p>
+<p>Practical patterns for common architectural setups, using the v1 rule set:
+<code>tree_structure</code>, <code>dependencies</code>, <code>no_circular_imports</code>, <code>service_isolation</code>.</p>
 <hr />
 <h2 id="monorepo-with-multiple-services">Monorepo with multiple services</h2>
 <p><strong>Project layout:</strong></p>
@@ -666,23 +671,19 @@
         └── utils/
 </code></pre>
 <p><strong>Configuration:</strong></p>
-<pre><code class="language-toml">[tool.pyarchrules]
-project_name = &quot;my-platform&quot;
-strict = true
-
-[tool.pyarchrules.services.auth]
-path                         = &quot;services/auth&quot;
-tree                         = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
-tree_strict                  = true
-dependencies                 = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
-allowed_service_dependencies = [&quot;shared&quot;]
+<pre><code class="language-toml">[tool.pyarchrules.services.auth]
+path                = &quot;services/auth&quot;
+tree                = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
+tree_mode           = &quot;strict&quot;
+dependencies        = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
+no_circular_imports = true
 
 [tool.pyarchrules.services.catalog]
-path                         = &quot;services/catalog&quot;
-tree                         = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
-tree_strict                  = true
-dependencies                 = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
-allowed_service_dependencies = [&quot;shared&quot;]
+path                = &quot;services/catalog&quot;
+tree                = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
+tree_mode           = &quot;strict&quot;
+dependencies        = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
+no_circular_imports = true
 
 [tool.pyarchrules.services.shared]
 path = &quot;services/shared&quot;
@@ -690,10 +691,25 @@ tree = [&quot;models&quot;, &quot;utils&quot;]
 </code></pre>
 <p>What this enforces:</p>
 <ul>
-<li><code>auth</code> and <code>catalog</code> must each contain exactly <code>api</code>, <code>domain</code>, and <code>infra</code>.</li>
-<li>Internal imports follow <code>api -&gt; domain -&gt; infra</code>.</li>
-<li><code>auth</code> and <code>catalog</code> may import from <code>shared</code>, but not from each other.</li>
+<li><code>auth</code> and <code>catalog</code> must each contain <strong>exactly</strong> <code>api</code>, <code>domain</code>, and
+  <code>infra</code> (<code>tree_mode = "strict"</code>).</li>
+<li>Internal imports follow <code>api → domain → infra</code>.</li>
+<li>No circular imports inside <code>auth</code> or <code>catalog</code>.</li>
 </ul>
+<p>To also forbid <code>auth</code> and <code>catalog</code> from importing each other's internals,
+add <code>isolate_services = true</code> at the project level and mark <code>shared</code> as a
+shared library:</p>
+<pre><code class="language-toml">[tool.pyarchrules]
+isolate_services = true
+
+[tool.pyarchrules.services.shared]
+path   = &quot;services/shared&quot;
+shared = true
+tree   = [&quot;models&quot;, &quot;utils&quot;]
+
+# ... auth and catalog as above
+</code></pre>
+<p>See <a href="../configuration/#service-isolation">Configuration → Service isolation</a>.</p>
 <hr />
 <h2 id="clean-architecture">Clean Architecture</h2>
 <p><strong>Typical layer structure:</strong></p>
@@ -707,54 +723,58 @@ tree = [&quot;models&quot;, &quot;utils&quot;]
 <pre><code class="language-toml">[tool.pyarchrules.services.backend]
 path         = &quot;src/backend&quot;
 tree         = [&quot;api&quot;, &quot;application&quot;, &quot;domain&quot;, &quot;infra&quot;]
-tree_strict  = true
+tree_mode    = &quot;strict&quot;
 dependencies = [
     &quot;api         -&gt; application&quot;,
     &quot;application -&gt; domain&quot;,
     &quot;infra       -&gt; domain&quot;,
 ]
+no_circular_imports = true
 </code></pre>
 <pre><code>api --&gt; application --&gt; domain &lt;-- infra
 </code></pre>
 <p><strong>Python DSL equivalent:</strong></p>
 <pre><code class="language-python">def test_clean_architecture():
     rules = PyArchRules()
-    rules.for_service(&quot;backend&quot;).must_contain_folders(
-        [&quot;api&quot;, &quot;application&quot;, &quot;domain&quot;, &quot;infra&quot;],
-        allow_extra=False,
-    )
+    rules.for_service(&quot;backend&quot;) \
+         .tree_structure([&quot;api&quot;, &quot;application&quot;, &quot;domain&quot;, &quot;infra&quot;], mode=&quot;strict&quot;) \
+         .dependencies([
+             &quot;api         -&gt; application&quot;,
+             &quot;application -&gt; domain&quot;,
+             &quot;infra       -&gt; domain&quot;,
+         ]) \
+         .no_circular_imports()
     rules.validate()
 </code></pre>
+<p>DSL and TOML can be combined or used independently. See <a href="../dsl/">Python DSL</a>.</p>
 <hr />
 <h2 id="microservices-with-a-shared-library">Microservices with a shared library</h2>
-<pre><code class="language-toml">[tool.pyarchrules]
-project_name = &quot;platform&quot;
-strict = true
-
-[tool.pyarchrules.services.shared]
+<pre><code class="language-toml">[tool.pyarchrules.services.shared]
 path = &quot;shared&quot;
 tree = [&quot;models&quot;, &quot;utils&quot;]
 
 [tool.pyarchrules.services.orders]
-path                         = &quot;orders&quot;
-tree                         = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
-tree_strict                  = true
-dependencies                 = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
-allowed_service_dependencies = [&quot;shared&quot;]
+path                = &quot;orders&quot;
+tree                = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
+tree_mode           = &quot;strict&quot;
+dependencies        = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
+no_circular_imports = true
 
 [tool.pyarchrules.services.payments]
-path                         = &quot;payments&quot;
-tree                         = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
-tree_strict                  = true
-dependencies                 = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
-allowed_service_dependencies = [&quot;shared&quot;]
+path                = &quot;payments&quot;
+tree                = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
+tree_mode           = &quot;strict&quot;
+dependencies        = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
+no_circular_imports = true
 </code></pre>
+<p>Each microservice gets its required folder layout, layered import direction,
+and cycle detection. Add <code>isolate_services = true</code> and mark shared libraries
+with <code>shared = true</code> to additionally forbid <code>orders</code> and <code>payments</code> from
+importing each other.</p>
 <hr />
-<h2 id="enforcing-consistent-structure-with-parameterised-tests">Enforcing consistent structure with parameterised tests</h2>
+<h2 id="catching-circular-imports-across-all-services">Catching circular imports across all services</h2>
 <pre><code class="language-python">import pytest
 from pyarchrules import PyArchRules
-
-STANDARD_LAYOUT = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
 
 
 @pytest.fixture(scope=&quot;session&quot;)
@@ -763,10 +783,8 @@ def arch():
 
 
 @pytest.mark.parametrize(&quot;service&quot;, [&quot;orders&quot;, &quot;payments&quot;, &quot;catalog&quot;])
-def test_standard_layout(arch, service):
-    arch.for_service(service).must_contain_folders(
-        STANDARD_LAYOUT, allow_extra=False
-    )
+def test_no_circular_imports(arch, service):
+    arch.for_service(service).no_circular_imports()
     arch.validate()
 </code></pre>
 <hr />
@@ -834,9 +852,53 @@ jobs:
       
         <footer class="md-footer">
   
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../dsl/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Python DSL">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Python DSL
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../changelog/" class="md-footer__link md-footer__link--next" aria-label="Next: Changelog">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Changelog
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
       <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2024-2026 Sergei Mikheev
+    </div>
   
   
     Made with
@@ -859,7 +921,7 @@ jobs:
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.top", "navigation.instant"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.top", "navigation.instant", "navigation.sections", "navigation.footer", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>

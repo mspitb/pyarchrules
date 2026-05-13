@@ -9,6 +9,8 @@
         <meta name="description" content="Architecture validation library for Python projects">
       
       
+        <meta name="author" content="Sergei Mikheev">
+      
       
         <link rel="canonical" href="https://mspitb.github.io/pyarchrules/getting-started/">
       
@@ -23,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -176,6 +178,8 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
       
     </form>
     <div class="md-search__output">
@@ -347,10 +351,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#requirements" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prerequisites
+        Requirements
       
     </span>
   </a>
@@ -369,10 +373,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-initialize-configuration" class="md-nav__link">
+  <a href="#1-initialise" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1 — Initialize configuration
+        1. Initialise
       
     </span>
   </a>
@@ -380,10 +384,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-add-a-service" class="md-nav__link">
+  <a href="#2-add-a-service" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2 — Add a service
+        2. Add a service
       
     </span>
   </a>
@@ -391,10 +395,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-define-rules" class="md-nav__link">
+  <a href="#3-define-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3 — Define rules
+        3. Define rules
       
     </span>
   </a>
@@ -402,10 +406,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-run-the-check" class="md-nav__link">
+  <a href="#4-run-the-check" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4 — Run the check
+        4. Run the check
       
     </span>
   </a>
@@ -413,10 +417,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-add-to-ci" class="md-nav__link">
+  <a href="#5-inspect-the-resolved-config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 5 — Add to CI
+        5. Inspect the resolved config
       
     </span>
   </a>
@@ -424,10 +428,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-the-python-api" class="md-nav__link">
+  <a href="#6-ci-integration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using the Python API
+        6. CI integration
       
     </span>
   </a>
@@ -435,10 +439,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
+  <a href="#python-api" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next Steps
+        Python API
       
     </span>
   </a>
@@ -615,10 +619,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#requirements" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prerequisites
+        Requirements
       
     </span>
   </a>
@@ -637,10 +641,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-initialize-configuration" class="md-nav__link">
+  <a href="#1-initialise" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1 — Initialize configuration
+        1. Initialise
       
     </span>
   </a>
@@ -648,10 +652,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-add-a-service" class="md-nav__link">
+  <a href="#2-add-a-service" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2 — Add a service
+        2. Add a service
       
     </span>
   </a>
@@ -659,10 +663,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-define-rules" class="md-nav__link">
+  <a href="#3-define-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3 — Define rules
+        3. Define rules
       
     </span>
   </a>
@@ -670,10 +674,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-run-the-check" class="md-nav__link">
+  <a href="#4-run-the-check" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4 — Run the check
+        4. Run the check
       
     </span>
   </a>
@@ -681,10 +685,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-add-to-ci" class="md-nav__link">
+  <a href="#5-inspect-the-resolved-config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 5 — Add to CI
+        5. Inspect the resolved config
       
     </span>
   </a>
@@ -692,10 +696,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-the-python-api" class="md-nav__link">
+  <a href="#6-ci-integration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using the Python API
+        6. CI integration
       
     </span>
   </a>
@@ -703,10 +707,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
+  <a href="#python-api" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next Steps
+        Python API
       
     </span>
   </a>
@@ -734,66 +738,48 @@
 
 
 <h1 id="getting-started">Getting Started</h1>
-<p>This guide walks you from a fresh install to your first passing architecture check
-in about five minutes.</p>
-<h2 id="prerequisites">Prerequisites</h2>
+<h2 id="requirements">Requirements</h2>
 <ul>
-<li>Python <strong>3.12</strong> or newer</li>
-<li>A project that uses <code>pyproject.toml</code></li>
+<li>Python 3.12+</li>
+<li>A project with <code>pyproject.toml</code></li>
 </ul>
 <h2 id="installation">Installation</h2>
 <pre><code class="language-bash">pip install pyarchrules
 </code></pre>
-<p>Verify:</p>
-<pre><code class="language-bash">pyarchrules --help
-</code></pre>
 <hr />
-<h2 id="step-1-initialize-configuration">Step 1 — Initialize configuration</h2>
-<p>Run from your project root (where <code>pyproject.toml</code> lives):</p>
+<h2 id="1-initialise">1. Initialise</h2>
+<p>Run from the directory that contains <code>pyproject.toml</code>:</p>
 <pre><code class="language-bash">pyarchrules init-project
 </code></pre>
-<p>This adds a <code>[tool.pyarchrules]</code> section with sensible defaults:</p>
-<pre><code class="language-toml">[tool.pyarchrules]
-project_name    = &quot;myapp&quot;
-description     = &quot;Architecture rules for this project&quot;
-root            = &quot;.&quot;
-strict          = true
-validate_paths  = true
-fail_on_warning = false
-</code></pre>
+<p>This adds an empty <code>[tool.pyarchrules]</code> block to <code>pyproject.toml</code>. Service
+definitions go under <code>[tool.pyarchrules.services.&lt;name&gt;]</code>.</p>
 <hr />
-<h2 id="step-2-add-a-service">Step 2 — Add a service</h2>
+<h2 id="2-add-a-service">2. Add a service</h2>
 <p>A <em>service</em> is any directory you want to enforce rules on.</p>
 <pre><code class="language-bash">pyarchrules add-service backend src/backend
 </code></pre>
-<p>Adds to <code>pyproject.toml</code>:</p>
+<p>Appends to <code>pyproject.toml</code>:</p>
 <pre><code class="language-toml">[tool.pyarchrules.services.backend]
 path = &quot;src/backend&quot;
 </code></pre>
 <hr />
-<h2 id="step-3-define-rules">Step 3 — Define rules</h2>
+<h2 id="3-define-rules">3. Define rules</h2>
+<p>Edit <code>pyproject.toml</code> to add the rules you need:</p>
 <pre><code class="language-toml">[tool.pyarchrules.services.backend]
-path = &quot;src/backend&quot;
-
-# Required directories
-tree = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
-
-# No extra directories allowed
-tree_strict = true
-
-# Import direction rules
-dependencies = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
+path         = &quot;src/backend&quot;
+tree         = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
+tree_mode    = &quot;strict&quot;
+dependencies = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;, &quot;* -&gt; utils&quot;]
 </code></pre>
+<p>See <a href="../configuration/">Configuration</a> for the full list of options.</p>
 <hr />
-<h2 id="step-4-run-the-check">Step 4 — Run the check</h2>
+<h2 id="4-run-the-check">4. Run the check</h2>
 <pre><code class="language-bash">pyarchrules check
 </code></pre>
 <p><strong>Passing:</strong></p>
 <pre><code>🔍 Checking 1 service(s)...
 
-📦 backend
-   Path: src/backend
-   Rules: tree_structure, internal_dependencies
+📦 backend  src/backend
 
 ✨ All checks passed!
    Checked 2 rule(s) across 1 service(s)
@@ -801,35 +787,50 @@ dependencies = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
 <p><strong>Failing:</strong></p>
 <pre><code>❌  Validation failed!
 
-Found 1 error(s) and 0 warning(s):
+Found 1 error(s):
 
 ❌ [backend] tree_structure
    Missing required paths: ['domain']
 </code></pre>
+<p>Exit code <code>1</code> is returned on any error, <code>2</code> on a configuration problem
+(missing <code>pyproject.toml</code>, malformed table, etc.). See
+<a href="../cli/#exit-codes">CLI Reference → Exit codes</a>.</p>
 <hr />
-<h2 id="step-5-add-to-ci">Step 5 — Add to CI</h2>
+<h2 id="5-inspect-the-resolved-config">5. Inspect the resolved config</h2>
+<p>To see exactly which services and rules <code>check</code> will run — useful when
+debugging a monorepo or a <code>--config</code> override:</p>
+<pre><code class="language-bash">pyarchrules show-config
+</code></pre>
+<p>Outputs a JSON document with every service, its declared keys, and the list
+of rules that will actually execute.</p>
+<hr />
+<h2 id="6-ci-integration">6. CI integration</h2>
 <pre><code class="language-yaml">- name: Architecture check
   run: pyarchrules check
 </code></pre>
-<p>Exit code <code>1</code> is returned on any violation when <code>strict = true</code>.</p>
+<p>For machine-readable output (GitHub annotations, custom dashboards):</p>
+<pre><code class="language-bash">pyarchrules check --format json --quiet &gt; arch.json
+</code></pre>
 <hr />
-<h2 id="using-the-python-api">Using the Python API</h2>
+<h2 id="python-api">Python API</h2>
+<p>Rules can also be written in Python, typically inside pytest:</p>
 <pre><code class="language-python"># tests/test_architecture.py
 from pyarchrules import PyArchRules
 
 def test_architecture():
     rules = PyArchRules()
-    rules.for_service(&quot;backend&quot;).must_contain_folders([&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;])
-    rules.validate()  # raises PyArchError on violation
+    rules.for_service(&quot;backend&quot;) \
+         .tree_structure([&quot;domain&quot;, &quot;application&quot;, &quot;infra&quot;], mode=&quot;strict&quot;) \
+         .dependencies([&quot;application -&gt; domain&quot;, &quot;infra -&gt; domain&quot;]) \
+         .no_circular_imports()
+    rules.validate()
 </code></pre>
-<hr />
-<h2 id="next-steps">Next Steps</h2>
-<ul>
-<li><a href="../configuration/">Configuration</a></li>
-<li><a href="../cli/">CLI Reference</a></li>
-<li><a href="../dsl/">Python DSL</a></li>
-<li><a href="../use-cases/">Use Cases</a></li>
-</ul>
+<p>If you don't want a <code>[tool.pyarchrules]</code> table at all, use <code>from_services</code>
+for a TOML-free setup:</p>
+<pre><code class="language-python">rules = PyArchRules.from_services({&quot;backend&quot;: &quot;src/backend&quot;})
+rules.for_service(&quot;backend&quot;).no_circular_imports().validate()
+</code></pre>
+<p>See <a href="../dsl/">Python DSL</a> for all available rules.</p>
 
 
 
@@ -860,9 +861,53 @@ def test_architecture():
       
         <footer class="md-footer">
   
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Home
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../configuration/" class="md-footer__link md-footer__link--next" aria-label="Next: Configuration">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Configuration
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
       <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2024-2026 Sergei Mikheev
+    </div>
   
   
     Made with
@@ -885,7 +930,7 @@ def test_architecture():
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.top", "navigation.instant"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.top", "navigation.instant", "navigation.sections", "navigation.footer", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>

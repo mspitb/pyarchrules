@@ -9,6 +9,8 @@
         <meta name="description" content="Architecture validation library for Python projects">
       
       
+        <meta name="author" content="Sergei Mikheev">
+      
       
         <link rel="canonical" href="https://mspitb.github.io/pyarchrules/configuration/">
       
@@ -23,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -78,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#configuration-reference" class="md-skip">
+        <a href="#configuration" class="md-skip">
           Skip to content
         </a>
       
@@ -176,6 +178,8 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
       
     </form>
     <div class="md-search__output">
@@ -374,10 +378,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#project-level-settings" class="md-nav__link">
+  <a href="#a-service-in-one-block" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Project-level settings
+        A service in one block
       
     </span>
   </a>
@@ -385,10 +389,121 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#service-configuration" class="md-nav__link">
+  <a href="#folder-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Service configuration
+        Folder layout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Folder layout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#strictness-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strictness levels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-strict-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example — "strict" mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-exact-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example — "exact" mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tree_ignore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tree_ignore
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#internal-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Internal dependencies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Internal dependencies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overlapping-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlapping rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#circular-imports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Circular imports
       
     </span>
   </a>
@@ -396,35 +511,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#tree-structure-rules" class="md-nav__link">
+  <a href="#service-isolation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tree structure rules
+        Service isolation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Service isolation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-services-are-matched" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How services are matched
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#internal-dependency-rules" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#not-available-via-the-dsl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Internal dependency rules
+        Not available via the DSL
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#cross-service-dependency-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cross-service dependency rules
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -433,6 +554,17 @@
     <span class="md-ellipsis">
       
         Full example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deferred
       
     </span>
   </a>
@@ -582,10 +714,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#project-level-settings" class="md-nav__link">
+  <a href="#a-service-in-one-block" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Project-level settings
+        A service in one block
       
     </span>
   </a>
@@ -593,10 +725,121 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#service-configuration" class="md-nav__link">
+  <a href="#folder-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Service configuration
+        Folder layout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Folder layout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#strictness-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strictness levels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-strict-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example — "strict" mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-exact-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example — "exact" mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tree_ignore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tree_ignore
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#internal-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Internal dependencies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Internal dependencies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overlapping-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlapping rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#circular-imports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Circular imports
       
     </span>
   </a>
@@ -604,35 +847,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#tree-structure-rules" class="md-nav__link">
+  <a href="#service-isolation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tree structure rules
+        Service isolation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Service isolation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-services-are-matched" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How services are matched
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#internal-dependency-rules" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#not-available-via-the-dsl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Internal dependency rules
+        Not available via the DSL
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#cross-service-dependency-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cross-service dependency rules
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -641,6 +890,17 @@
     <span class="md-ellipsis">
       
         Full example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deferred
       
     </span>
   </a>
@@ -667,224 +927,300 @@
   
 
 
-<h1 id="configuration-reference">Configuration Reference</h1>
-<p>PyArchRules is configured entirely through <code>pyproject.toml</code>.</p>
-<hr />
-<h2 id="project-level-settings">Project-level settings</h2>
-<pre><code class="language-toml">[tool.pyarchrules]
-project_name    = &quot;myapp&quot;
-description     = &quot;Architecture rules for this project&quot;
-root            = &quot;.&quot;
-strict          = true
-validate_paths  = true
-fail_on_warning = false
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>Key</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>project_name</code></td>
-<td>string</td>
-<td><em>(required)</em></td>
-<td>Human-readable project name.</td>
-</tr>
-<tr>
-<td><code>description</code></td>
-<td>string</td>
-<td><code>""</code></td>
-<td>Optional description.</td>
-</tr>
-<tr>
-<td><code>root</code></td>
-<td>string</td>
-<td><code>"."</code></td>
-<td>Root directory, relative to <code>pyproject.toml</code>.</td>
-</tr>
-<tr>
-<td><code>strict</code></td>
-<td>bool</td>
-<td><code>true</code></td>
-<td>Exit with code <code>1</code> on any error violation.</td>
-</tr>
-<tr>
-<td><code>validate_paths</code></td>
-<td>bool</td>
-<td><code>true</code></td>
-<td>Validate that service paths exist on disk.</td>
-</tr>
-<tr>
-<td><code>fail_on_warning</code></td>
-<td>bool</td>
-<td><code>false</code></td>
-<td>Exit with code <code>1</code> on warnings too.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="service-configuration">Service configuration</h2>
+<h1 id="configuration">Configuration</h1>
+<p>All configuration is declared in <code>pyproject.toml</code> under
+<code>[tool.pyarchrules]</code>. There is one rule per section below. Enable only the
+ones you need.</p>
+<h2 id="a-service-in-one-block">A service in one block</h2>
+<p>The smallest valid config: register a directory as a service.</p>
 <pre><code class="language-toml">[tool.pyarchrules.services.backend]
 path = &quot;src/backend&quot;
 </code></pre>
-<table>
-<thead>
-<tr>
-<th>Key</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>path</code></td>
-<td>string</td>
-<td><em>(required)</em></td>
-<td>Path to the service directory, relative to <code>root</code>.</td>
-</tr>
-</tbody>
-</table>
+<p>Options:</p>
+<ul>
+<li><code>path</code> <em>(required)</em> — directory of the service, relative to
+  <code>pyproject.toml</code>.</li>
+<li><code>shared</code> <em>(optional, default <code>false</code>)</em> — used by
+  <a href="#service-isolation">Service isolation</a>. Other services are allowed to
+  import from a shared one.</li>
+</ul>
+<p>You can declare as many services as you want. A project-level
+<code>[tool.pyarchrules]</code> table is not required.</p>
 <hr />
-<h2 id="tree-structure-rules">Tree structure rules</h2>
+<h2 id="folder-layout">Folder layout</h2>
+<p>Rule: <strong><code>tree_structure</code></strong>. Declares which folders a service must contain
+and how strict the check is.</p>
 <pre><code class="language-toml">[tool.pyarchrules.services.backend]
 path             = &quot;src/backend&quot;
 tree             = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;, &quot;api/model&quot;]
-tree_strict      = true
+tree_mode        = &quot;strict&quot;
 tree_allow_files = true
+tree_ignore      = [&quot;__snapshots__&quot;, &quot;migrations_*&quot;]
 </code></pre>
+<p>Options:</p>
+<ul>
+<li><code>tree</code> — paths that <strong>must</strong> exist inside the service. Nested paths like
+  <code>"api/model"</code> are supported. Duplicates raise <code>ConfigError</code>.</li>
+<li><code>tree_mode</code> <em>(default <code>"exists"</code>)</em> — strictness level, see below.</li>
+<li><code>tree_allow_files</code> <em>(default <code>true</code>)</em> — in <code>strict</code> / <code>exact</code> mode, loose
+  files (<code>.py</code>, etc.) are always tolerated.</li>
+<li><code>tree_ignore</code> — glob patterns of directory basenames to skip in
+  <code>strict</code> / <code>exact</code> mode.</li>
+</ul>
+<h3 id="strictness-levels">Strictness levels</h3>
 <table>
 <thead>
 <tr>
-<th>Key</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
+<th>Mode</th>
+<th>Behaviour</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>tree</code></td>
-<td>list[string]</td>
-<td><code>[]</code></td>
-<td>Paths that <strong>must</strong> exist inside the service. Supports nested paths (<code>"api/model"</code>).</td>
+<td><code>"exists"</code> <em>(default)</em></td>
+<td>Only checks that every declared path exists. Extra directories are ignored.</td>
 </tr>
 <tr>
-<td><code>tree_strict</code></td>
-<td>bool</td>
-<td><code>false</code></td>
-<td>No directories other than those listed are allowed.</td>
+<td><code>"strict"</code></td>
+<td>Every level covered by <code>tree</code> (root plus all intermediate parents) must contain only the declared children. Leaf directories are not inspected.</td>
 </tr>
 <tr>
-<td><code>tree_allow_files</code></td>
-<td>bool</td>
-<td><code>true</code></td>
-<td>When strict, regular files are still permitted.</td>
+<td><code>"exact"</code></td>
+<td>Same as <code>strict</code>, plus every leaf directory is walked recursively. Undeclared subdirectories inside a leaf are reported.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Example — strict layout violation:</strong></p>
+<h3 id="example-strict-mode">Example — <code>"strict"</code> mode</h3>
+<pre><code class="language-toml">tree      = [&quot;api&quot;, &quot;domain&quot;]
+tree_mode = &quot;strict&quot;
+</code></pre>
 <pre><code>services/auth/
-├── api/
-├── domain/
-├── infra/
-└── utils/      &lt;- not listed in tree!
+├── api/       ← declared ✓
+├── domain/    ← declared ✓
+├── infra/     ← not in tree!
+└── utils/     ← not in tree!
 </code></pre>
-<pre><code>❌ [auth] tree_structure
-   Unexpected directories in strict mode: ['utils']
+<p>Result:</p>
+<pre><code>⚠️  [auth] tree_structure
+   Extra items in '.' (tree_mode=strict): ['infra', 'utils']
 </code></pre>
+<h3 id="example-exact-mode">Example — <code>"exact"</code> mode</h3>
+<p><code>"exact"</code> adds a recursive check inside leaf directories.</p>
+<pre><code class="language-toml">tree      = [&quot;api&quot;, &quot;api/model&quot;, &quot;domain&quot;]
+tree_mode = &quot;exact&quot;
+</code></pre>
+<pre><code>services/auth/
+├── api/           ← non-leaf (has child api/model in tree)
+│   ├── model/     ← declared ✓
+│   └── internal/  ← not in tree! caught by strict part
+└── domain/        ← leaf (no children declared in tree)
+    └── core/      ← not in tree! caught by exact (leaf walk)
+</code></pre>
+<p>Result:</p>
+<pre><code>⚠️  [auth] tree_structure
+   Extra items in 'api' (tree_mode=exact): ['internal']
+   Undeclared directories inside leaf dirs (tree_mode=exact): ['domain/core']
+</code></pre>
+<h3 id="tree_ignore"><code>tree_ignore</code></h3>
+<p>Exclude directories that are unrelated to architecture but exist inside the
+service tree (snapshots, generated migrations, fixtures, …).</p>
+<pre><code class="language-toml">tree_ignore = [&quot;__snapshots__&quot;, &quot;migrations_*&quot;, &quot;fixtures&quot;]
+</code></pre>
+<p>Patterns are matched against the <strong>basename</strong> of each directory using
+<code>fnmatch.fnmatchcase</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Matches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"migrations"</code></td>
+<td>exactly <code>migrations</code></td>
+</tr>
+<tr>
+<td><code>"migrations_*"</code></td>
+<td><code>migrations_001</code>, <code>migrations_alembic</code>, …</td>
+</tr>
+<tr>
+<td><code>"*.cache"</code></td>
+<td><code>build.cache</code> (dotdirs like <code>.cache</code> are filtered earlier)</td>
+</tr>
+</tbody>
+</table>
+<p><code>tree_ignore</code> applies only to the <code>tree_structure</code> rule. The import-based
+rules (<code>dependencies</code>, <code>no_circular_imports</code>, <code>service_isolation</code>) already
+skip virtualenvs, build artefacts, and tool caches automatically.</p>
 <hr />
-<h2 id="internal-dependency-rules">Internal dependency rules</h2>
+<h2 id="internal-dependencies">Internal dependencies</h2>
+<p>Rule: <strong><code>dependencies</code></strong>. An allow-list of imports between folders inside a
+service. Anything not listed is forbidden.</p>
 <pre><code class="language-toml">[tool.pyarchrules.services.backend]
 path         = &quot;src/backend&quot;
 dependencies = [
-    &quot;api -&gt; domain&quot;,
-    &quot;domain -&gt; infra&quot;,
+    &quot;api -&gt; domain&quot;,      # api may import from domain
+    &quot;domain -&gt; infra&quot;,    # domain may import from infra
+    &quot;* -&gt; utils&quot;,         # any folder may import from utils
 ]
 </code></pre>
+<p>With this config, inside <code>src/backend/</code>:</p>
+<ul>
+<li>✅ <code>api/views.py</code> imports from <code>domain</code> — allowed by <code>api -&gt; domain</code>.</li>
+<li>✅ <code>domain/service.py</code> imports from <code>utils</code> — allowed by <code>* -&gt; utils</code>.</li>
+<li>❌ <code>domain/service.py</code> imports from <code>api</code> — <strong>forbidden</strong> (no rule).</li>
+<li>❌ <code>api/views.py</code> imports from <code>infra</code> — <strong>forbidden</strong> (no rule).</li>
+</ul>
+<h3 id="syntax">Syntax</h3>
+<p>The values on each side of <code>-&gt;</code> are <strong>folder paths inside the service</strong>.
+Not service names, not Python module names. Use forward slashes on all
+platforms.</p>
 <table>
 <thead>
 <tr>
-<th>Key</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
+<th>Form</th>
+<th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>dependencies</code></td>
-<td>list[string]</td>
-<td><code>[]</code></td>
-<td>Allowed import relationships: <code>source -&gt; target</code>.</td>
+<td><code>"api"</code></td>
+<td>The folder <code>&lt;service&gt;/api/</code>.</td>
+</tr>
+<tr>
+<td><code>"api/v1"</code></td>
+<td>A nested folder.</td>
+</tr>
+<tr>
+<td><code>"a -&gt; b"</code></td>
+<td>Files under <code>a/</code> may import from <code>b/</code>.</td>
+</tr>
+<tr>
+<td><code>"* -&gt; b"</code></td>
+<td>Any folder may import from <code>b/</code>.</td>
+</tr>
+<tr>
+<td><code>"a -&gt; *"</code></td>
+<td><code>a/</code> may import from any folder.</td>
 </tr>
 </tbody>
 </table>
-<p><code>"api -&gt; domain"</code> means code in <code>api/</code> <strong>may</strong> import from <code>domain/</code>.
-Only listed relationships are enforced. Duplicate rules are reported as errors.</p>
-<p><strong>Clean Architecture example:</strong></p>
+<p>Cross-service imports (<code>from other_service.api import X</code>) are handled by
+<a href="#service-isolation"><code>service_isolation</code></a>, not by <code>dependencies</code>.</p>
+<h3 id="notes">Notes</h3>
+<ul>
+<li>Same-package imports (<code>api/a.py</code> → <code>api/b.py</code>) are always allowed.</li>
+<li>Files at the service root (<code>main.py</code>, <code>__init__.py</code>) are not subject to
+  this rule. It applies only to files inside a named subfolder.</li>
+<li>Third-party libraries and <code>stdlib</code> are never flagged.</li>
+<li>The grammar is <code>source -&gt; target</code> only. There is no <code>!-&gt;</code> (forbid) form.</li>
+<li>Files in folders not matched by any source are unrestricted. Declare a
+  rule only for the folders whose imports you want to constrain.</li>
+</ul>
+<h3 id="overlapping-rules">Overlapping rules</h3>
+<p>If two rules cover the same area and one is broader than the other, the
+broader rule wins. PyArchRules reports this as a <strong>warning</strong>, not a config
+error:</p>
 <pre><code class="language-toml">dependencies = [
-    &quot;api         -&gt; application&quot;,
-    &quot;application -&gt; domain&quot;,
-    &quot;infra       -&gt; domain&quot;,
+    &quot;api    -&gt; domain&quot;,   # broader
+    &quot;api/v1 -&gt; domain&quot;,   # already covered by the first rule
 ]
 </code></pre>
-<pre><code>api  --&gt; application --&gt; domain &lt;-- infra
-</code></pre>
+<p>Delete the narrower rule, or replace the broader one with the explicit set
+you intended. Wildcard (<code>*</code>) rules never trigger this warning.</p>
 <hr />
-<h2 id="cross-service-dependency-rules">Cross-service dependency rules</h2>
-<pre><code class="language-toml">[tool.pyarchrules.services.auth]
-path                         = &quot;services/auth&quot;
-allowed_service_dependencies = [&quot;shared&quot;, &quot;common&quot;]
+<h2 id="circular-imports">Circular imports</h2>
+<p>Rule: <strong><code>no_circular_imports</code></strong>. Detects import cycles inside a service.</p>
+<pre><code class="language-toml">[tool.pyarchrules.services.backend]
+path                = &quot;src/backend&quot;
+no_circular_imports = true
 </code></pre>
+<p>That's the whole interface — one boolean per service. The same check is
+available from the <a href="../dsl/">Python DSL</a> via <code>.no_circular_imports()</code>.</p>
+<hr />
+<h2 id="service-isolation">Service isolation</h2>
+<p>Rule: <strong><code>service_isolation</code></strong>. Project-wide. Forbids one service from
+importing the internals of another. Useful in monorepos.</p>
+<pre><code class="language-toml">[tool.pyarchrules]
+isolate_services = true
+
+[tool.pyarchrules.services.shared]
+path   = &quot;services/shared&quot;
+shared = true                     # exempt: anyone can import from it
+
+[tool.pyarchrules.services.orders]
+path = &quot;services/orders&quot;
+
+[tool.pyarchrules.services.catalog]
+path = &quot;services/catalog&quot;
+</code></pre>
+<p>What this enforces:</p>
+<ul>
+<li><code>orders</code> may not <code>from catalog.&lt;...&gt;</code>, and vice versa.</li>
+<li>Either may <code>from shared.&lt;...&gt;</code> because <code>shared</code> is flagged
+  <code>shared = true</code>.</li>
+<li>Intra-service imports (e.g. <code>from orders.domain import X</code> from inside
+  <code>orders/</code>) are always allowed.</li>
+</ul>
+<h3 id="how-services-are-matched">How services are matched</h3>
+<p>The top-level package of every absolute import is matched against the
+<strong>last directory component</strong> of each service's <code>path</code>:</p>
 <table>
 <thead>
 <tr>
-<th>Key</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
+<th><code>path</code></th>
+<th>Implied import name</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>allowed_service_dependencies</code></td>
-<td>list[string]</td>
-<td><code>[]</code></td>
-<td>Other services this service may depend on.</td>
+<td><code>services/catalog</code></td>
+<td><code>catalog</code></td>
+</tr>
+<tr>
+<td><code>src/backend</code></td>
+<td><code>backend</code></td>
+</tr>
+<tr>
+<td><code>apps/orders-svc</code></td>
+<td><code>orders-svc</code></td>
 </tr>
 </tbody>
 </table>
+<p>This is the convention used by most monorepo Python projects.</p>
+<h3 id="not-available-via-the-dsl">Not available via the DSL</h3>
+<p><code>service_isolation</code> is project-wide, and the DSL is per-service, so this
+rule is <strong>TOML-only</strong>. The <a href="../dsl/">Python DSL</a> covers <code>tree_structure</code>,
+<code>dependencies</code>, and <code>no_circular_imports</code>.</p>
 <hr />
 <h2 id="full-example">Full example</h2>
 <pre><code class="language-toml">[tool.pyarchrules]
-project_name    = &quot;ecommerce&quot;
-strict          = true
-validate_paths  = true
-fail_on_warning = false
-
-[tool.pyarchrules.services.catalog]
-path         = &quot;services/catalog&quot;
-tree         = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;, &quot;api/model&quot;]
-tree_strict  = true
-dependencies = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
-
-[tool.pyarchrules.services.orders]
-path                         = &quot;services/orders&quot;
-tree                         = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
-tree_strict                  = true
-dependencies                 = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;]
-allowed_service_dependencies = [&quot;catalog&quot;, &quot;shared&quot;]
+isolate_services = true
 
 [tool.pyarchrules.services.shared]
-path = &quot;services/shared&quot;
-tree = [&quot;models&quot;, &quot;utils&quot;]
+path   = &quot;services/shared&quot;
+shared = true
+
+[tool.pyarchrules.services.catalog]
+path                = &quot;services/catalog&quot;
+tree                = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
+tree_mode           = &quot;strict&quot;
+dependencies        = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;, &quot;* -&gt; utils&quot;]
+no_circular_imports = true
+
+[tool.pyarchrules.services.orders]
+path                = &quot;services/orders&quot;
+tree                = [&quot;api&quot;, &quot;domain&quot;, &quot;infra&quot;]
+tree_mode           = &quot;strict&quot;
+dependencies        = [&quot;api -&gt; domain&quot;, &quot;domain -&gt; infra&quot;, &quot;* -&gt; utils&quot;]
 </code></pre>
+<hr />
+<h2 id="deferred">Deferred</h2>
+<p>The following keys are intentionally <strong>not</strong> part of v1 and will be
+reintroduced in a later release: <code>allowed_service_dependencies</code>,
+<code>allowed_external_libs</code>, <code>forbidden_external_libs</code>, and per-rule
+<code>severity</code>.</p>
 
 
 
@@ -915,9 +1251,53 @@ tree = [&quot;models&quot;, &quot;utils&quot;]
       
         <footer class="md-footer">
   
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Getting Started
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../cli/" class="md-footer__link md-footer__link--next" aria-label="Next: CLI Reference">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                CLI Reference
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
       <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2024-2026 Sergei Mikheev
+    </div>
   
   
     Made with
@@ -940,7 +1320,7 @@ tree = [&quot;models&quot;, &quot;utils&quot;]
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.top", "navigation.instant"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.top", "navigation.instant", "navigation.sections", "navigation.footer", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
