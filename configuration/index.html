@@ -1115,8 +1115,9 @@ platforms.</p>
   this rule. It applies only to files inside a named subfolder.</li>
 <li>Third-party libraries and <code>stdlib</code> are never flagged.</li>
 <li>The grammar is <code>source -&gt; target</code> only. There is no <code>!-&gt;</code> (forbid) form.</li>
-<li>Files in folders not matched by any source are unrestricted. Declare a
-  rule only for the folders whose imports you want to constrain.</li>
+<li>It is an allow-list: once <code>dependencies</code> is set, every import between
+  different top-level folders must be allowed by some rule, including imports
+  from folders that are not a source in any rule.</li>
 </ul>
 <h3 id="overlapping-rules">Overlapping rules</h3>
 <p>If two rules cover the same area and one is broader than the other, the
