@@ -24,7 +24,6 @@ This creates a virtual environment under `.venv/` and installs all dependencies 
 | `make test` | Run all tests |
 | `make lint` | Check code with ruff |
 | `make format` | Auto-fix formatting and lint issues |
-| `make clean` | Remove build artifacts and cache |
 
 ## Running tests
 
@@ -43,13 +42,14 @@ make lint    # check only
 make format  # auto-fix
 ```
 
+Ruff is pinned in `pyproject.toml` so local formatting and CI use the same version.
+
 ## Docs
 
 Documentation lives in `docs/docs/`. To preview locally:
 
 ```bash
-cd docs
-uv run mkdocs serve
+make docs
 ```
 
 The site is deployed automatically to [mspitb.github.io/pyarchrules](https://mspitb.github.io/pyarchrules/) on push to `main`.
@@ -71,12 +71,16 @@ src/pyarchrules/
   core/
     config.py            # pyproject.toml read/write
     spec_loader.py       # parses TOML into ProjectSpec / ServiceSpec
-    registries/          # DSLRegistry, LinterRegistry
+    runner.py            # RuleRunner: runs rules, reports, raises
+    reporting.py         # ViolationReporter implementations (text / json)
     rules/
-      dsl/               # Python DSL rule implementations
-      linter/            # TOML-driven rule implementations (TreeRule, etc.)
-      base/              # shared base classes
-      checks/            # low-level file/import scanners
+      rule.py            # Rule base class (see "Adding a rule" in its docstring)
+      dsl/base.py        # DslRule: interface for rules exposed in the Python DSL
+      linter/base.py     # LinterRule: interface for rules enabled from TOML
+      factory.py         # RuleFactory: ServiceSpec -> rules (TOML entry point)
+      rule_set.py        # ServiceRuleSet: fluent DSL builder (DSL entry point)
+      *_rule.py          # tree, dependencies, no_circular_imports, isolation
+      checks/            # import scanning and cycle detection
   model/
     spec/                # ProjectSpec, ServiceSpec, TreeMode
     rules/               # RuleViolation, RuleEvalResult

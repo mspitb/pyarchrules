@@ -6,6 +6,36 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.0] — Unreleased
+
+### Fixed
+
+- `no_circular_imports` now follows absolute imports (`from pkg.a import b`,
+  `import pkg.a`), not only relative ones, and ignores imports under
+  `if TYPE_CHECKING:`. Each cycle is reported once; very deep import graphs no
+  longer hit the recursion limit.
+- `dependencies` rule: documentation and the generated template now correctly
+  describe it as an allow-list.
+
+### Changed
+
+- Public API: `PyArchRules`, `ServiceSpec`, `ProjectSpec`, `RuleViolation`,
+  `RuleEvalResult` and the error classes are exported from `pyarchrules`.
+  `DSLRegistry` / `LinterRegistry` are removed from the public API.
+- `ServiceSpec` validates its own fields, so the TOML loader and the DSL
+  reject invalid input identically.
+- Python 3.12+ only in CI (matches `requires-python`).
+- Package ships `py.typed`; build backend is `hatchling`.
+- Internal: rule modules moved to a flat `core/rules/` package; `LinterRule`
+  and `DslRule` interfaces mark how each rule is exposed.
+
+### Removed
+
+- Unused helpers (`core.rules.checks.fs`, private-import helpers, AST cache).
+- `black` and `isort` dev dependencies (ruff handles formatting).
+
+---
+
 ## [0.1.0b2] — 2026-05-13
 
 Breaking release on the road to `1.0`. The rule set is cut down to four,

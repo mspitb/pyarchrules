@@ -1,11 +1,14 @@
+import json
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 import typer
 
 from pyarchrules.core.config import PyArchConfig
 from pyarchrules.core.errors import PyArchError
-from pyarchrules.core.reporting import ConsoleViolationReporter
+from pyarchrules.core.reporting import ConsoleViolationReporter, ViolationReporter
+from pyarchrules.model.rules import RuleEvalResult
 from pyarchrules.pyarchrules import PyArchRules
 
 app = typer.Typer(
@@ -30,7 +33,14 @@ RED = typer.colors.RED
 BRIGHT_BLUE = typer.colors.BRIGHT_BLUE
 BRIGHT_CYAN = typer.colors.BRIGHT_CYAN
 MAGENTA = typer.colors.MAGENTA
-BRIGHT_MAGENTA = typer.colors.BRIGHT_MAGENTA
+
+
+def _load_config(root_path: Path, message: str = "❌ pyproject.toml not found") -> PyArchConfig:
+    try:
+        return PyArchConfig.load(root_path)
+    except PyArchError:
+        typer.echo(typer.style(message, fg=RED))
+        raise typer.Exit(code=EXIT_VIOLATIONS)
 
 
 @app.command("init-project")
@@ -43,11 +53,7 @@ def init_project(
     """Create pyarchrules configuration in pyproject.toml."""
     root_path = Path(project_root).resolve()
 
-    try:
-        config = PyArchConfig.load(root_path)
-    except PyArchError:
-        typer.echo(typer.style("❌ pyproject.toml not found, please create one first", fg=RED))
-        raise typer.Exit(code=1)
+    config = _load_config(root_path, "❌ pyproject.toml not found, please create one first")
 
     already_initialized = config.is_initialized()
 
@@ -82,11 +88,7 @@ def add_service(
     """Add a service to pyproject.toml."""
     root_path = Path.cwd()
 
-    try:
-        config = PyArchConfig.load(root_path)
-    except PyArchError:
-        typer.echo(typer.style("❌ pyproject.toml not found", fg=RED))
-        raise typer.Exit(code=1)
+    config = _load_config(root_path)
 
     if name is None:
         name = typer.prompt(typer.style("📦 Service name", fg=BRIGHT_CYAN))
@@ -125,11 +127,7 @@ def remove_service(
     """Remove a service from pyproject.toml."""
     root_path = Path.cwd()
 
-    try:
-        config = PyArchConfig.load(root_path)
-    except PyArchError:
-        typer.echo(typer.style("❌ pyproject.toml not found", fg=RED))
-        raise typer.Exit(code=1)
+    config = _load_config(root_path)
 
     if name is None:
         services = config.get_services()
@@ -165,11 +163,7 @@ def list_services():
     """List all configured services."""
     root_path = Path.cwd()
 
-    try:
-        config = PyArchConfig.load(root_path)
-    except PyArchError:
-        typer.echo(typer.style("❌ pyproject.toml not found", fg=RED))
-        raise typer.Exit(code=1)
+    config = _load_config(root_path)
 
     if not config.is_initialized():
         typer.secho("❌ [tool.pyarchrules] not initialized", fg=RED)
@@ -198,9 +192,6 @@ def show_config(
     Useful for debugging which services and rules will run before invoking
     ``check``. Output goes to stdout; loading errors exit with code 2.
     """
-    import json
-    from dataclasses import asdict
-
     root_path = Path(project_root).resolve()
     try:
         pyarchrules = PyArchRules(root_path)
@@ -219,6 +210,109 @@ def show_config(
         },
     }
     typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+
+
+class _TextReporter:
+    """Colourised text output for ``check`` (a :class:`ViolationReporter`)."""
+
+    def __init__(self, total_rules: int, total_services: int) -> None:
+        self._total_rules = total_rules
+        self._total_services = total_services
+
+    def report(self, result: RuleEvalResult) -> None:
+        if result.is_valid:
+            typer.secho("✨ All checks passed!", fg=GREEN, bold=True)
+            typer.secho(
+                f"   Checked {self._total_rules} rule(s) across {self._total_services} service(s)",
+                fg=BRIGHT_CYAN,
+            )
+            return
+
+        typer.secho("❌  Validation failed!", fg=RED, bold=True)
+        typer.secho("")
+        typer.secho(
+            f"Found {result.error_count} error(s) and {result.warning_count} warning(s):",
+            fg=YELLOW,
+        )
+        typer.secho("")
+
+        for violation in result.violations:
+            is_error = violation.severity == "error"
+            typer.secho(
+                f"{'❌' if is_error else '⚠️ '} [{violation.service_name}] {violation.rule_name}",
+                fg=RED if is_error else YELLOW,
+                bold=True,
+            )
+            typer.secho(f"   {violation.message}", fg=BRIGHT_BLUE)
+            if violation.details:
+                typer.secho(f"   Details: {violation.details}", fg=BLUE)
+            typer.secho("")
+
+
+def _report_nested_configs(root_path: Path, pyarchrules: PyArchRules) -> None:
+    """Warn on stderr about ``pyproject.toml`` files below the root that define rules too."""
+    nested = PyArchConfig.find_nested_pyarch_configs(
+        project_root=root_path,
+        exclude=root_path / "pyproject.toml",
+    )
+    if not nested:
+        return
+
+    conflicts = PyArchConfig.detect_service_conflicts(
+        root_pyproject=root_path / "pyproject.toml",
+        root_services={
+            name: svc.absolute_path for name, svc in pyarchrules.project_spec.services.items()
+        },
+        nested_configs=nested,
+    )
+    if conflicts:
+        typer.secho(
+            f"⚠️  Found {len(nested)} nested pyarchrules config(s) "
+            f"with {len(conflicts)} conflict(s):",
+            fg=YELLOW,
+            err=True,
+            bold=True,
+        )
+        for line in conflicts:
+            typer.secho(f"   ? {line}", fg=YELLOW, err=True)
+        typer.secho(
+            "   This run uses the root config only. To run a nested "
+            "config explicitly, point check at its directory.",
+            fg=BRIGHT_BLUE,
+            err=True,
+        )
+    else:
+        typer.secho(
+            f"ℹ️  Found {len(nested)} nested pyarchrules config(s) (no conflicts with root).",
+            fg=BRIGHT_BLUE,
+            err=True,
+        )
+    typer.secho("", err=True)
+
+
+def _print_services(pyarchrules: PyArchRules) -> None:
+    for service_name, service_spec in pyarchrules.project_spec.services.items():
+        typer.secho(f"📦 {service_name}", fg=BRIGHT_CYAN, bold=True)
+        typer.secho(f"   Path: {service_spec.path}", fg=BRIGHT_BLUE)
+
+        service_rules = pyarchrules.linter_rules_for(service_name)
+        if service_rules:
+            typer.secho(f"   Rules: {', '.join(rule.rule_name for rule in service_rules)}", fg=BLUE)
+        else:
+            typer.secho("   Rules: none", fg=YELLOW)
+    typer.secho("")
+
+
+def _filter_result(
+    result: RuleEvalResult, services: list[str] | None, rules: list[str] | None
+) -> RuleEvalResult:
+    return RuleEvalResult(
+        violations=[
+            v
+            for v in result.violations
+            if (not services or v.service_name in services) and (not rules or v.rule_name in rules)
+        ]
+    )
 
 
 @app.command("check")
@@ -275,7 +369,7 @@ def check(
         )
         raise typer.Exit(code=EXIT_CONFIG)
 
-    # Resolve project root: prefer explicit --config, then positional argument.
+    # An explicit --config wins over the positional project root.
     if config is not None:
         config_path = config.resolve()
         root_path = config_path.parent if config_path.is_file() else config_path
@@ -292,132 +386,44 @@ def check(
         typer.secho("⚠️  No services configured", fg=YELLOW)
         raise typer.Exit(code=EXIT_OK)
 
-    # Detect parallel pyarchrules configs in nested pyproject.toml files.
-    # We do not load or merge them — just shout if they exist so the user
-    # knows there is a second source of architectural truth in the tree.
-    nested = PyArchConfig.find_nested_pyarch_configs(
-        project_root=root_path,
-        exclude=root_path / "pyproject.toml",
-    )
-    if nested and output_format == "text":
-        root_services_abs = {
-            name: svc.absolute_path for name, svc in pyarchrules.project_spec.services.items()
-        }
-        conflicts = PyArchConfig.detect_service_conflicts(
-            root_pyproject=root_path / "pyproject.toml",
-            root_services=root_services_abs,
-            nested_configs=nested,
+    unknown = [s for s in service_filter or [] if s not in pyarchrules.services]
+    if unknown:
+        typer.secho(
+            f"❌ Unknown service(s): {', '.join(unknown)}. "
+            f"Available: {', '.join(pyarchrules.services)}",
+            fg=RED,
+            err=True,
         )
-        if conflicts:
-            typer.secho(
-                f"⚠️  Found {len(nested)} nested pyarchrules config(s) "
-                f"with {len(conflicts)} conflict(s):",
-                fg=YELLOW,
-                err=True,
-                bold=True,
-            )
-            for line in conflicts:
-                typer.secho(f"   • {line}", fg=YELLOW, err=True)
-            typer.secho(
-                "   This run uses the root config only. To run a nested "
-                "config explicitly, point check at its directory.",
-                fg=BRIGHT_BLUE,
-                err=True,
-            )
-            typer.secho("", err=True)
-        else:
-            typer.secho(
-                f"ℹ️  Found {len(nested)} nested pyarchrules config(s) (no conflicts with root).",
-                fg=BRIGHT_BLUE,
-                err=True,
-            )
-            typer.secho("", err=True)
+        raise typer.Exit(code=EXIT_CONFIG)
 
     if output_format == "text":
+        _report_nested_configs(root_path, pyarchrules)
         typer.secho(f"🔍 Checking {len(pyarchrules.services)} service(s)...", fg=MAGENTA, bold=True)
         typer.secho("")
-
         if verbose:
-            for service_name, service_spec in pyarchrules.project_spec.services.items():
-                typer.secho(f"📦 {service_name}", fg=BRIGHT_CYAN, bold=True)
-                typer.secho(f"   Path: {service_spec.path}", fg=BRIGHT_BLUE)
+            _print_services(pyarchrules)
 
-                service_rules = pyarchrules.linter_rules_for(service_name)
-                if service_rules:
-                    rules_list = ", ".join(rule.rule_name for rule in service_rules)
-                    typer.secho(f"   Rules: {rules_list}", fg=BLUE)
-                else:
-                    typer.secho("   Rules: none", fg=YELLOW)
-            typer.secho("")
+    result = _filter_result(
+        pyarchrules.check_linter(raise_on_violation=False, verbose=False),
+        service_filter,
+        rule_filter,
+    )
 
-    result = pyarchrules.check_linter(raise_on_violation=False, verbose=False)
+    reporter: ViolationReporter = (
+        ConsoleViolationReporter(stream=sys.stdout, format="json")
+        if output_format == "json"
+        else _TextReporter(pyarchrules.linter_rule_count, len(pyarchrules.services))
+    )
+    reporter.report(result)
 
-    # Apply --service / --rule post-filters. Validate names early so a typo
-    # surfaces immediately instead of silently returning zero violations.
-    if service_filter:
-        unknown = [s for s in service_filter if s not in pyarchrules.services]
-        if unknown:
-            typer.secho(
-                f"❌ Unknown service(s): {', '.join(unknown)}. "
-                f"Available: {', '.join(pyarchrules.services)}",
-                fg=RED,
-                err=True,
-            )
-            raise typer.Exit(code=EXIT_CONFIG)
-    if service_filter or rule_filter:
-        from pyarchrules.model.rules import RuleEvalResult
-
-        kept = [
-            v
-            for v in result.violations
-            if (not service_filter or v.service_name in service_filter)
-            and (not rule_filter or v.rule_name in rule_filter)
-        ]
-        result = RuleEvalResult(violations=kept)
-
-    error_count = result.error_count
-    warning_count = result.warning_count
-
-    if output_format == "json":
-        # Single machine-readable document on stdout.
-
-        ConsoleViolationReporter(stream=sys.stdout, format="json").report(result)
-    else:
-        if not result.is_valid:
-            typer.secho("❌  Validation failed!", fg=RED, bold=True)
-            typer.secho("")
-            typer.secho(f"Found {error_count} error(s) and {warning_count} warning(s):", fg=YELLOW)
-            typer.secho("")
-
-            for violation in result.violations:
-                severity_icon = "❌" if violation.severity == "error" else "⚠️ "
-                severity_color = RED if violation.severity == "error" else YELLOW
-
-                typer.secho(
-                    f"{severity_icon} [{violation.service_name}] {violation.rule_name}",
-                    fg=severity_color,
-                    bold=True,
-                )
-                typer.secho(f"   {violation.message}", fg=BRIGHT_BLUE)
-                if violation.details:
-                    typer.secho(f"   Details: {violation.details}", fg=BLUE)
-                typer.secho("")
-        else:
-            typer.secho("✨ All checks passed!", fg=GREEN, bold=True)
-            total_rules = pyarchrules.linter_rule_count
-            typer.secho(
-                f"   Checked {total_rules} rule(s) across {len(pyarchrules.services)} service(s)",
-                fg=BRIGHT_CYAN,
-            )
-
-    # Exit code matrix:
-    #   - any error → 1
-    #   - warnings + -W → 1
-    #   - otherwise → 0
-    if error_count > 0 or (warnings_as_errors and warning_count > 0):
+    if result.error_count > 0 or (warnings_as_errors and result.warning_count > 0):
         raise typer.Exit(code=EXIT_VIOLATIONS)
     raise typer.Exit(code=EXIT_OK)
 
 
 def main():
+    # Legacy Windows code pages (cp1252) cannot encode the emoji used in output.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     app()

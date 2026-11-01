@@ -3,7 +3,7 @@
 import pytest
 
 from pyarchrules.core.errors import ConfigError
-from pyarchrules.core.rules.linter.dependencies_rule import DependenciesRule
+from pyarchrules.core.rules.dependencies_rule import DependenciesRule
 
 
 class TestDependenciesRule:
@@ -44,9 +44,7 @@ class TestDependenciesRule:
         (tmp_test_dir / "domain").mkdir()
 
         # parse_rules itself does NOT raise on overlap (syntax-only now).
-        parsed = DependenciesRule.parse_rules(
-            ["api -> domain", "api/controllers -> domain"]
-        )
+        parsed = DependenciesRule.parse_rules(["api -> domain", "api/controllers -> domain"])
         assert len(parsed) == 2
 
         # Overlap shows up at validate() time as a warning.
@@ -120,3 +118,27 @@ class TestDependenciesRule:
 
         import_errors = [v for v in violations if "Forbidden import" in v.message]
         assert len(import_errors) == 0
+
+
+def test_windows_style_separators_are_normalised(make_service_spec, tmp_test_dir, monkeypatch):
+    monkeypatch.chdir(tmp_test_dir)
+    (tmp_test_dir / "api" / "controllers").mkdir(parents=True)
+    (tmp_test_dir / "domain" / "models").mkdir(parents=True)
+    (tmp_test_dir / "api" / "controllers" / "user.py").write_text(
+        "from domain.models import User\n"
+    )
+
+    spec = make_service_spec(dependencies=["api\\controllers -> domain\\models"])
+
+    assert DependenciesRule(spec).validate() == []
+
+
+def test_relative_import_resolution_across_packages(make_service_spec, tmp_test_dir, monkeypatch):
+    monkeypatch.chdir(tmp_test_dir)
+    (tmp_test_dir / "api").mkdir()
+    (tmp_test_dir / "domain").mkdir()
+    (tmp_test_dir / "api" / "views.py").write_text("from ..domain import models\n")
+
+    violations = DependenciesRule(make_service_spec(dependencies=["domain -> api"])).validate()
+
+    assert [v.details["imported"] for v in violations] == ["domain"]

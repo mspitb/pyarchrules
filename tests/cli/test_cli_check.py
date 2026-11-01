@@ -104,9 +104,7 @@ def test_check_warns_on_nested_same_service_name(make_project, cli_runner):
         'path = "."\n',
     )
 
-    result = cli_runner.invoke(
-        app, ["check", str(project.root)]
-    )
+    result = cli_runner.invoke(app, ["check", str(project.root)])
 
     assert result.exit_code == 0
     combined = result.output
@@ -129,9 +127,7 @@ def test_check_warns_on_nested_same_path(make_project, cli_runner):
         'path = "."\n',
     )
 
-    result = cli_runner.invoke(
-        app, ["check", str(project.root)]
-    )
+    result = cli_runner.invoke(app, ["check", str(project.root)])
 
     assert result.exit_code == 0
     combined = result.output
@@ -151,9 +147,7 @@ def test_check_no_warning_when_nested_clean(make_project, cli_runner):
         '[project]\nname = "api"\nversion = "0.0.0"\n',
     )
 
-    result = cli_runner.invoke(
-        app, ["check", str(project.root)]
-    )
+    result = cli_runner.invoke(app, ["check", str(project.root)])
 
     assert result.exit_code == 0
     combined = result.output
@@ -175,9 +169,7 @@ def test_check_skips_hidden_dirs(make_project, cli_runner):
         'path = "."\n',
     )
 
-    result = cli_runner.invoke(
-        app, ["check", str(project.root)]
-    )
+    result = cli_runner.invoke(app, ["check", str(project.root)])
 
     assert result.exit_code == 0
     combined = result.output
@@ -191,10 +183,6 @@ def test_check_returns_exit_1_on_real_violation(make_project, cli_runner):
         with_pyproject=True,
         services={"api": "services/api"},
     )
-    # Append a tree requirement that won't exist on disk.
-    pyproj = project.pyproject.read_text(encoding="utf-8")
-    pyproj += '\n[tool.pyarchrules.services.api]\npath = "services/api"\ntree = ["does_not_exist"]\n'
-    # rewrite cleanly: regenerate with extra config
     project.write_pyproject(
         {
             "project": {"name": "p", "version": "0.1.0"},
@@ -231,10 +219,7 @@ def test_check_json_format_is_valid_json(make_project, cli_runner):
     result = cli_runner.invoke(app, ["check", str(project.root), "--format", "json"])
 
     assert result.exit_code == 0
-    # Find JSON in output (text noise may precede when verbose; here verbose
-    # is suppressed for json format on the pretty-printer side, so output is
-    # a clean JSON document).
-    payload = json.loads(result.output.strip().splitlines()[-1] if result.output.strip().count("{") == 1 else result.output[result.output.index("{"):])
+    payload = json.loads(result.output)
     assert "summary" in payload
     assert payload["summary"]["is_valid"] is True
 
@@ -285,18 +270,79 @@ def test_check_service_filter_excludes_other_violations(make_project, cli_runner
     assert result_all.exit_code == 1
 
     # With --service worker: exit 0 (api violation filtered out).
-    result_filtered = cli_runner.invoke(
-        app, ["check", str(project.root), "--service", "worker"]
-    )
+    result_filtered = cli_runner.invoke(app, ["check", str(project.root), "--service", "worker"])
     assert result_filtered.exit_code == 0
 
 
 @pytest.mark.cli
 def test_check_unknown_service_filter_exits_2(make_project, cli_runner):
     project = make_project(with_pyproject=True, services={"api": "services/api"})
-    result = cli_runner.invoke(
-        app, ["check", str(project.root), "--service", "ghost"]
-    )
+    result = cli_runner.invoke(app, ["check", str(project.root), "--service", "ghost"])
     assert result.exit_code == 2
     assert "Unknown service" in result.output
 
+
+def _project_with_missing_tree(make_project, **service_options):
+    project = make_project(with_pyproject=True, services={"api": "services/api"})
+    project.write_pyproject(
+        {
+            "project": {"name": "p", "version": "0.1.0"},
+            "tool": {
+                "pyarchrules": {
+                    "services": {"api": {"path": "services/api", **service_options}},
+                }
+            },
+        }
+    )
+    return project
+
+
+@pytest.mark.cli
+def test_check_json_contract(make_project, cli_runner):
+    """JSON output keeps a stable schema and stdout contains only the document."""
+    import json
+
+    project = _project_with_missing_tree(make_project, tree=["missing"])
+
+    result = cli_runner.invoke(app, ["check", str(project.root), "--format", "json"])
+
+    assert result.exit_code == 1
+    payload = json.loads(result.stdout)
+    assert payload["summary"] == {"errors": 1, "warnings": 0, "is_valid": False}
+    (violation,) = payload["violations"]
+    assert set(violation) == {
+        "rule_name",
+        "service_name",
+        "message",
+        "severity",
+        "file",
+        "line",
+        "details",
+    }
+    assert violation["rule_name"] == "tree_structure"
+    assert violation["service_name"] == "api"
+
+
+@pytest.mark.cli
+def test_check_warnings_exit_code(make_project, cli_runner):
+    """Warnings keep exit code 0 unless -W is passed."""
+    project = _project_with_missing_tree(make_project, tree=["domain"], tree_mode="strict")
+    project.mkdir("services/api/domain")
+    project.mkdir("services/api/extra")
+
+    plain = cli_runner.invoke(app, ["check", str(project.root)])
+    strict = cli_runner.invoke(app, ["check", str(project.root), "-W"])
+
+    assert plain.exit_code == 0
+    assert strict.exit_code == 1
+
+
+@pytest.mark.cli
+def test_check_service_and_rule_filters(make_project, cli_runner):
+    project = _project_with_missing_tree(make_project, tree=["missing"])
+
+    other_rule = cli_runner.invoke(app, ["check", str(project.root), "-r", "internal_dependencies"])
+    unknown = cli_runner.invoke(app, ["check", str(project.root), "-s", "nope"])
+
+    assert other_rule.exit_code == 0
+    assert unknown.exit_code == 2

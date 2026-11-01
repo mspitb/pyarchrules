@@ -157,4 +157,3 @@ class TestServiceIsolation:
         rules = PyArchRules(project.root)
         result = rules.check_linter()
         assert not [v for v in result.violations if v.rule_name == "service_isolation"]
-

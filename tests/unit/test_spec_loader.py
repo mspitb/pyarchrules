@@ -42,11 +42,9 @@ class TestSpecLoader:
         assert "root" in spec.services
         assert spec.services["root"].path == "."
 
-
     # -------------------------------------------------------------------------
     # Service options
     # -------------------------------------------------------------------------
-
 
     def test_parses_internal_dependencies(self, tmp_test_dir):
         """dependencies (internal layer rules) is parsed correctly."""
@@ -86,6 +84,7 @@ dependencies = ["api -> domain", "domain -> infra"]
         (root / "pyproject.toml").write_text(toml_content, encoding="utf-8")
 
         from pyarchrules.model.spec.service_spec import TreeMode
+
         spec = SpecLoader(root).load()
 
         assert spec.services["svc"].tree == ["api", "domain", "infra", "api/v1"]
@@ -134,6 +133,12 @@ dependencies = ["api -> domain", "domain -> infra"]
         with pytest.raises(PyArchError, match="doesn't exist"):
             SpecLoader(project.root).load()
 
+    def test_malformed_toml_raises_error(self, tmp_test_dir):
+        (tmp_test_dir / "pyproject.toml").write_text("[[[ not toml", encoding="utf-8")
+
+        with pytest.raises(PyArchError, match="Cannot read"):
+            SpecLoader(tmp_test_dir).load()
+
     def test_string_shorthand_is_rejected(self, tmp_test_dir):
         """Service value must be a table — string shorthand is no longer accepted."""
         root = tmp_test_dir / "string_shorthand"
@@ -169,12 +174,16 @@ svc = "svc"
             with_pyproject=False,
             services={"svc": "svc"},
         )
-        project.write_pyproject({
-            "project": {"name": "test"},
-            "tool": {"pyarchrules": {
-                "services": {"svc": {"path": "svc", "no_circular_imports": True}},
-            }},
-        })
+        project.write_pyproject(
+            {
+                "project": {"name": "test"},
+                "tool": {
+                    "pyarchrules": {
+                        "services": {"svc": {"path": "svc", "no_circular_imports": True}},
+                    }
+                },
+            }
+        )
         project.mkdir("svc")
 
         spec = SpecLoader(project.root).load()

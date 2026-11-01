@@ -6,6 +6,7 @@ import tomllib
 from pathlib import Path
 
 import tomlkit
+from tomlkit.exceptions import TOMLKitError
 
 from pyarchrules.core.errors import PyArchError
 
@@ -39,7 +40,10 @@ class PyArchConfig:
             raise PyArchError("pyproject.toml not found")
 
         with open(pyproject, encoding="utf-8") as f:
-            doc = tomlkit.parse(f.read())
+            try:
+                doc = tomlkit.parse(f.read())
+            except TOMLKitError as e:
+                raise PyArchError(f"Cannot parse {pyproject}: {e}") from None
 
         return cls(doc, pyproject)
 
@@ -95,7 +99,7 @@ class PyArchConfig:
             'tree_ignore      = ["__snapshots__", "migrations_*"]',
             "",
             'Allowed import directions ("source -> target").',
-            "Layers not listed as a source are unrestricted.",
+            "Allow-list: imports between top-level folders not matched here are errors.",
             "dependencies = [",
             '  "api    -> domain",',
             '  "domain -> infra",',
@@ -165,10 +169,6 @@ class PyArchConfig:
             raise PyArchError(f"Service '{name}' not found")
 
         del services[name]
-
-    # ------------------------------------------------------------------
-    # Nested config detection
-    # ------------------------------------------------------------------
 
     @staticmethod
     def find_nested_pyarch_configs(

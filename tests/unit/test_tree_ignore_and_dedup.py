@@ -5,10 +5,9 @@ from __future__ import annotations
 import pytest
 
 from pyarchrules.core.errors import ConfigError
-from pyarchrules.core.rules.linter.tree_rule import TreeRule
+from pyarchrules.core.rules.tree_rule import TreeRule
 from pyarchrules.model.spec.service_spec import TreeMode
 from pyarchrules.pyarchrules import PyArchRules
-
 
 # ---------------------------------------------------------------------------
 # Duplicate tree entries
@@ -76,7 +75,7 @@ class TestTreeIgnore:
     def test_non_ignored_extra_still_reported(self, make_service_spec, tmp_test_dir):
         (tmp_test_dir / "api").mkdir()
         (tmp_test_dir / "__snapshots__").mkdir()  # ignored
-        (tmp_test_dir / "junk").mkdir()           # NOT ignored
+        (tmp_test_dir / "junk").mkdir()  # NOT ignored
 
         spec = make_service_spec(
             tree=["api"],
@@ -109,21 +108,14 @@ class TestTreeIgnore:
         project.mkdir("src/api/__snapshots__")
 
         rules = PyArchRules(project.root)
-        rules.for_service("api").tree_structure(
-            ["domain"], mode="strict", ignore=["__snapshots__"]
-        )
+        rules.for_service("api").tree_structure(["domain"], mode="strict", ignore=["__snapshots__"])
         result = rules.validate(raise_on_violation=False, verbose=False)
         assert result.is_valid
 
     def test_toml_loader_rejects_bad_tree_ignore_type(self, make_project):
         project = make_project(
             services={"api": "src/api"},
-            extra_config={
-                "services": {
-                    "api": {"path": "src/api", "tree_ignore": "not a list"}
-                }
-            },
+            extra_config={"services": {"api": {"path": "src/api", "tree_ignore": "not a list"}}},
         )
         with pytest.raises(ConfigError, match="tree_ignore.*must be a list"):
             PyArchRules(project.root)
-
