@@ -55,10 +55,6 @@ class ConsoleViolationReporter:
         else:
             self._report_text(result)
 
-    # ------------------------------------------------------------------
-    # Formatters
-    # ------------------------------------------------------------------
-
     def _report_text(self, result: RuleEvalResult) -> None:
         print(
             f"Architecture validation failed: "

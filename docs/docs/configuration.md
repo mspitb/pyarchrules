@@ -176,8 +176,9 @@ Cross-service imports (`from other_service.api import X`) are handled by
   this rule. It applies only to files inside a named subfolder.
 - Third-party libraries and `stdlib` are never flagged.
 - The grammar is `source -> target` only. There is no `!->` (forbid) form.
-- Files in folders not matched by any source are unrestricted. Declare a
-  rule only for the folders whose imports you want to constrain.
+- It is an allow-list: once `dependencies` is set, every import between
+  different top-level folders must be allowed by some rule, including imports
+  from folders that are not a source in any rule.
 
 ### Overlapping rules
 

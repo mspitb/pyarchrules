@@ -1,8 +1,4 @@
-"""Import-related utility functions for architecture rules.
-
-Pure functions — no dependency on Rule or ServiceSpec.
-Used by both DSL rules (core/rules/) and linter rules (core/rules/linter/).
-"""
+"""Import analysis helpers shared by the dependency, isolation and cycle rules."""
 
 from __future__ import annotations
 
@@ -10,388 +6,255 @@ import ast
 import os
 import sys
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 STDLIB_MODULES: frozenset[str] = frozenset(sys.stdlib_module_names)
 
-# Directory names that are never walked when looking for ``.py`` files.
-# These are virtually always either vendored dependencies, build artefacts,
-# or tool caches — none of which belong in an architecture scan.
+# Directories that never contain project sources worth scanning.
 _SKIP_DIRS: frozenset[str] = frozenset(
-    {
-        "__pycache__",
-        ".git",
-        ".hg",
-        ".svn",
-        ".venv",
-        "venv",
-        ".tox",
-        ".nox",
-        "node_modules",
-        "build",
-        "dist",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-        "site-packages",
-        ".eggs",
-    }
+    {"__pycache__", "venv", "node_modules", "build", "dist", "site-packages"}
 )
-
-# Per-process AST cache. Keyed by ``(absolute_path_str, mtime_ns, size)``,
-# so any in-place edit invalidates the entry automatically. The cache is
-# unbounded but the typical CLI process is short-lived; long-lived consumers
-# (e.g. a pytest session) can call :func:`clear_cache` between runs.
-_AST_CACHE: dict[tuple[str, int, int], list[ImportInfo]] = {}  # type: ignore[name-defined]
-
-
-def clear_cache() -> None:
-    """Drop all cached ``collect_imports`` results.
-
-    Useful in long-running processes (test sessions, language servers) that
-    edit files between rule evaluations.
-    """
-    _AST_CACHE.clear()
 
 
 def iter_py_files(root: Path) -> Iterator[Path]:
-    """Yield every ``.py`` file under *root*, skipping common noise directories.
-
-    Uses :func:`os.scandir` for speed and prunes the walk at every step so
-    vendored / cache directories never enter the scan. Order is filesystem
-    order — call ``sorted()`` on the result if you need determinism.
-
-    Parameters
-    ----------
-    root : Path
-        Directory to walk recursively.
-
-    Yields
-    ------
-    Path
-        Absolute path to each ``.py`` file.
-    """
+    """Yield every ``.py`` file under *root*, skipping hidden and vendored directories."""
     stack: list[str] = [str(root)]
     while stack:
-        current = stack.pop()
         try:
-            entries = os.scandir(current)
+            entries = list(os.scandir(stack.pop()))
         except OSError:
             continue
-        with entries as it:
-            for entry in it:
-                name = entry.name
-                if name.startswith("."):
-                    # Hidden files/dirs (e.g. ".git", ".venv") — skip both.
-                    if entry.is_dir(follow_symlinks=False) and name not in _SKIP_DIRS:
-                        # Still allow the user to opt into hidden dirs that
-                        # aren't on the noise list? No — hidden dirs are
-                        # almost never source. Stay strict.
-                        continue
-                    if entry.is_file(follow_symlinks=False):
-                        continue
-                    continue
-                if entry.is_dir(follow_symlinks=False):
-                    if name in _SKIP_DIRS:
-                        continue
+        for entry in entries:
+            if entry.name.startswith("."):
+                continue
+            if entry.is_dir(follow_symlinks=False):
+                if entry.name not in _SKIP_DIRS:
                     stack.append(entry.path)
-                elif name.endswith(".py") and entry.is_file(follow_symlinks=False):
-                    yield Path(entry.path)
+            elif entry.name.endswith(".py") and entry.is_file(follow_symlinks=False):
+                yield Path(entry.path)
 
 
-@dataclass
+@dataclass(frozen=True)
 class ImportInfo:
-    """Represents a single import statement found in a Python file.
+    """A single import statement.
 
-    Attributes
-    ----------
-    module : str
-        Fully qualified module string as written (e.g. ``"os.path"``, ``".models"``).
-    names : list[str]
-        Imported names — empty for ``import x``, populated for ``from x import a, b``.
-    is_wildcard : bool
-        ``True`` when the statement is ``from x import *``.
-    is_relative : bool
-        ``True`` when the import uses leading dots (e.g. ``from . import foo``).
-    source_file : Path or None
-        File the import was found in.
-    lineno : int
-        Line number of the import statement.
+    ``module`` is kept as written, including leading dots for relative imports
+    (``".models"``). ``names`` is empty for ``import x`` and lists the imported
+    names for ``from x import a, b``. ``type_checking`` marks imports that live
+    under ``if TYPE_CHECKING:`` and therefore never execute at runtime.
     """
 
     module: str
-    """Fully qualified module string as written (e.g. 'os.path', '.models', 'from_pkg.sub')."""
-
-    names: list[str] = field(default_factory=list)
-    """Imported names — empty for plain `import x`, populated for `from x import a, b`."""
-
-    is_wildcard: bool = False
-    """True when the statement is `from x import *`."""
-
+    names: tuple[str, ...] = ()
     is_relative: bool = False
-    """True when the import uses leading dots (e.g. `from . import foo`)."""
-
-    source_file: Path | None = None
-    """File the import was found in."""
-
     lineno: int = 0
-    """Line number of the import statement."""
+    type_checking: bool = False
+
+
+def _is_type_checking_test(test: ast.expr) -> bool:
+    if isinstance(test, ast.Name):
+        return test.id == "TYPE_CHECKING"
+    return isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"
+
+
+def _iter_statements(body: list[ast.stmt], in_tc: bool = False) -> Iterator[tuple[ast.stmt, bool]]:
+    """Yield every statement below *body* with a flag for ``if TYPE_CHECKING`` bodies.
+
+    Expressions are never entered, which keeps large files cheap to scan.
+    """
+    for node in body:
+        yield node, in_tc
+        if isinstance(node, ast.If) and _is_type_checking_test(node.test):
+            yield from _iter_statements(node.body, True)
+            yield from _iter_statements(node.orelse, in_tc)
+            continue
+        for field in ("body", "orelse", "finalbody", "handlers", "cases"):
+            children = getattr(node, field, None)
+            if not isinstance(children, list):
+                continue
+            for child in children:
+                if isinstance(child, ast.stmt):
+                    yield from _iter_statements([child], in_tc)
+                else:  # ExceptHandler / match_case
+                    yield from _iter_statements(child.body, in_tc)
 
 
 def collect_imports(path: Path) -> list[ImportInfo]:
-    """Parse all import statements from a Python file.
+    """Parse every import statement of a Python file.
 
-    Results are cached by ``(path, mtime_ns, size)``; subsequent calls with
-    an unmodified file return the cached list. Call :func:`clear_cache` to
-    invalidate manually.
-
-    Parameters
-    ----------
-    path : Path
-        Path to a ``.py`` file.
-
-    Returns
-    -------
-    list[ImportInfo]
-        Empty list on parse failure or I/O error.
+    Returns an empty list when the file cannot be read or parsed.
     """
     try:
-        stat = path.stat()
-    except OSError:
-        return []
-
-    key = (str(path), stat.st_mtime_ns, stat.st_size)
-    cached = _AST_CACHE.get(key)
-    if cached is not None:
-        return cached
-
-    try:
-        source = path.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=str(path))
-    except (SyntaxError, OSError):
-        _AST_CACHE[key] = []
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (SyntaxError, ValueError, OSError):
         return []
 
     imports: list[ImportInfo] = []
-
-    for node in ast.walk(tree):
+    for node, in_tc in _iter_statements(tree.body):
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                imports.append(
-                    ImportInfo(
-                        module=alias.name,
-                        names=[],
-                        is_wildcard=False,
-                        is_relative=False,
-                        source_file=path,
-                        lineno=node.lineno,
-                    )
-                )
-
+            imports.extend(
+                ImportInfo(alias.name, lineno=node.lineno, type_checking=in_tc)
+                for alias in node.names
+            )
         elif isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-            level = node.level or 0
-            is_relative = level > 0
-            # Reconstruct with leading dots for clarity
-            dotted_module = ("." * level) + module
-
-            names = [alias.name for alias in node.names]
-            is_wildcard = names == ["*"]
-
             imports.append(
                 ImportInfo(
-                    module=dotted_module,
-                    names=names,
-                    is_wildcard=is_wildcard,
-                    is_relative=is_relative,
-                    source_file=path,
+                    module="." * node.level + (node.module or ""),
+                    names=tuple(alias.name for alias in node.names),
+                    is_relative=node.level > 0,
                     lineno=node.lineno,
+                    type_checking=in_tc,
                 )
             )
-
-    _AST_CACHE[key] = imports
     return imports
 
 
 def collect_imports_from_dir(directory: Path) -> dict[Path, list[ImportInfo]]:
-    """Collect all imports from every ``.py`` file under a directory.
-
-    Skips ``__pycache__``, virtualenvs, build artefacts, and other common
-    noise directories — see :data:`_SKIP_DIRS`.
-
-    Parameters
-    ----------
-    directory : Path
-        Root directory to scan recursively.
-
-    Returns
-    -------
-    dict[Path, list[ImportInfo]]
-        Mapping of file path to its list of parsed imports.
-    """
+    """Collect imports of every ``.py`` file under *directory*."""
     return {py_file: collect_imports(py_file) for py_file in iter_py_files(directory)}
 
 
-def is_private_symbol(name: str) -> bool:
-    """Return ``True`` if *name* is private by convention (single leading underscore).
+def resolve_relative(module: str, package: list[str]) -> list[str] | None:
+    """Resolve a relative import to absolute path parts.
 
-    Dunder names such as ``__init__`` and ``__all__`` are **not** considered private.
-
-    Parameters
-    ----------
-    name : str
-        An identifier, e.g. ``"_helper"``, ``"__init__"``, ``"public"``.
-
-    Returns
-    -------
-    bool
+    *package* is the package of the importing module: the directory parts of
+    a plain module, or the directory itself for an ``__init__.py``. Returns
+    ``None`` when the import climbs above the root.
     """
-    return name.startswith("_") and not name.startswith("__")
+    dots = len(module) - len(module.lstrip("."))
+    if dots - 1 > len(package):
+        return None
+    base = package[: len(package) - (dots - 1)]
+    rest = module.lstrip(".")
+    return base + rest.split(".") if rest else base
 
 
-def has_private_import(imp: ImportInfo) -> bool:
-    """Return ``True`` if the import brings in a private symbol from a foreign module.
-
-    Covers ``from some.module import _private`` and ``import _private_module``.
-    Relative same-package imports are excluded (accessing own privates is allowed).
-
-    Parameters
-    ----------
-    imp : ImportInfo
-        Import statement to inspect.
-
-    Returns
-    -------
-    bool
-    """
-    if imp.is_relative:
-        return False
-
-    # `import _module`
-    top = imp.module.lstrip(".").split(".")[0]
-    if is_private_symbol(top):
-        return True
-
-    # `from module import _name`
-    return any(is_private_symbol(n) for n in imp.names if n != "*")
+def _module_key(rel: Path) -> tuple[str, list[str]]:
+    """Return the graph key of a file and the package it belongs to."""
+    parts = list(rel.parts)
+    if parts[-1] == "__init__.py":
+        return "/".join(parts[:-1]), parts[:-1]
+    package = parts[:-1]
+    parts[-1] = parts[-1].removesuffix(".py")
+    return "/".join(parts), package
 
 
 def build_module_graph(
     imports_by_file: dict[Path, list[ImportInfo]], root: Path
 ) -> dict[str, set[str]]:
-    """Build an intra-package dependency graph for cycle detection.
+    """Build a module dependency graph used for cycle detection.
 
-    Only intra-package (relative or same-package absolute) imports are included.
-
-    Parameters
-    ----------
-    imports_by_file : dict[Path, list[ImportInfo]]
-        Output of :func:`collect_imports_from_dir`.
-    root : Path
-        The package root directory, used to derive relative module keys.
-
-    Returns
-    -------
-    dict[str, set[str]]
-        Mapping of module key → set of imported module keys, both expressed
-        as POSIX strings relative to *root* (e.g. ``"domain/models"``).
+    Nodes are POSIX paths relative to *root* without the ``.py`` suffix
+    (``"domain/models"``); a package ``__init__.py`` is keyed by its directory.
+    Relative and absolute imports are both followed, but only edges between
+    modules that exist under *root* are kept. Absolute imports may be written
+    relative to *root* (``domain.models``) or prefixed with the root directory
+    name (``backend.domain.models``). Imports under ``if TYPE_CHECKING`` are
+    ignored because they never run.
     """
-    graph: dict[str, set[str]] = {}
-
+    files: list[tuple[str, list[str], list[ImportInfo]]] = []
     for file, imps in imports_by_file.items():
         try:
-            rel = file.relative_to(root)
+            key, package = _module_key(file.relative_to(root))
         except ValueError:
             continue
+        files.append((key, package, imps))
 
-        # Convert file path to dotted module path string
-        parts = list(rel.parts)
-        if parts[-1] == "__init__.py":
-            parts = parts[:-1]
-        else:
-            parts[-1] = parts[-1].removesuffix(".py")
-        mod_key = "/".join(parts)
+    known = {key for key, _, _ in files}
+    graph: dict[str, set[str]] = {key: set() for key in known}
 
-        graph.setdefault(mod_key, set())
-
+    for key, package, imps in files:
         for imp in imps:
-            if not imp.is_relative:
+            if imp.type_checking:
                 continue
-            resolved_base = _resolve_relative(imp.module, mod_key)
-            if not resolved_base:
-                continue
-
-            # `from . import b` → module="." → resolved_base is the package dir.
-            # Each name in `names` may refer to a sub-module; try to add those edges too.
-            if imp.names and not imp.module.lstrip("."):
-                # names like ["b", "c"] could be sub-modules — add both the package
-                # edge and per-name edges so cycles inside the package are detected.
-                graph[mod_key].add(resolved_base)
-                for name in imp.names:
-                    candidate = f"{resolved_base}/{name}" if resolved_base else name
-                    graph[mod_key].add(candidate)
-            else:
-                graph[mod_key].add(resolved_base)
-
+            for base in _base_candidates(imp, package, root.name):
+                targets = _targets(base, imp.names, known)
+                if targets:
+                    graph[key].update(targets - {key})
+                    break
     return graph
 
 
-def _resolve_relative(module: str, current: str) -> str | None:
-    """Resolve a relative import string to an absolute module key."""
-    dots = len(module) - len(module.lstrip("."))
-    rest = module.lstrip(".")
+def _base_candidates(imp: ImportInfo, package: list[str], root_name: str) -> list[list[str]]:
+    if imp.is_relative:
+        resolved = resolve_relative(imp.module, package)
+        return [resolved] if resolved is not None else []
+    parts = imp.module.split(".")
+    return [parts, parts[1:]] if parts[0] == root_name else [parts]
 
-    parts = current.split("/")
-    # Go up `dots` levels
-    parts = parts[: max(0, len(parts) - dots)]
 
-    if rest:
-        parts.append(rest.replace(".", "/"))
-
-    return "/".join(parts) if parts else None
+def _targets(base: list[str], names: tuple[str, ...], known: set[str]) -> set[str]:
+    """Known modules reached by ``from <base> import <names>`` or ``import <base>``."""
+    submodules = {"/".join([*base, n]) for n in names} & known
+    if submodules:
+        return submodules
+    key = "/".join(base)
+    return {key} if key in known else set()
 
 
 def detect_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
-    """Detect cycles in a directed module dependency graph using DFS.
+    """Return one representative cycle per strongly connected component.
 
-    Parameters
-    ----------
-    graph : dict[str, set[str]]
-        Mapping produced by :func:`build_module_graph`.
-
-    Returns
-    -------
-    list[list[str]]
-        Each entry is a list of module keys that form a cycle.
-        Returns an empty list when no cycles exist.
+    Uses an iterative Tarjan algorithm, so deep graphs cannot hit the
+    recursion limit. Every cycle starts and ends with the same module key.
     """
-    visited: set[str] = set()
+    index: dict[str, int] = {}
+    low: dict[str, int] = {}
+    on_stack: set[str] = set()
     stack: list[str] = []
-    stack_set: set[str] = set()
-    cycles: list[list[str]] = []
+    components: list[set[str]] = []
 
-    def dfs(node: str) -> None:
-        if node in stack_set:
-            # Found a cycle — extract the loop portion
-            idx = stack.index(node)
-            cycles.append(stack[idx:] + [node])
-            return
-        if node in visited:
-            return
+    for start in sorted(graph):
+        if start in index:
+            continue
+        index[start] = low[start] = len(index)
+        stack.append(start)
+        on_stack.add(start)
+        work = [(start, iter(sorted(graph[start])))]
+        while work:
+            node, neighbours = work[-1]
+            for nxt in neighbours:
+                if nxt not in index:
+                    index[nxt] = low[nxt] = len(index)
+                    stack.append(nxt)
+                    on_stack.add(nxt)
+                    work.append((nxt, iter(sorted(graph.get(nxt, ())))))
+                    break
+                if nxt in on_stack:
+                    low[node] = min(low[node], index[nxt])
+            else:
+                work.pop()
+                if work:
+                    parent = work[-1][0]
+                    low[parent] = min(low[parent], low[node])
+                if low[node] == index[node]:
+                    component: set[str] = set()
+                    while True:
+                        member = stack.pop()
+                        on_stack.discard(member)
+                        component.add(member)
+                        if member == node:
+                            break
+                    if len(component) > 1:
+                        components.append(component)
 
-        visited.add(node)
-        stack.append(node)
-        stack_set.add(node)
+    return [_shortest_cycle(graph, c) for c in sorted(components, key=min)]
 
-        for neighbour in graph.get(node, set()):
-            dfs(neighbour)
 
-        stack.pop()
-        stack_set.discard(node)
-
-    for node in list(graph.keys()):
-        if node not in visited:
-            dfs(node)
-
-    return cycles
+def _shortest_cycle(graph: dict[str, set[str]], component: set[str]) -> list[str]:
+    """Shortest cycle through the smallest node of a strongly connected component."""
+    start = min(component)
+    parents: dict[str, str] = {}
+    queue = [start]
+    for node in queue:
+        for nxt in sorted(graph[node] & component):
+            if nxt == start:
+                chain = [node]
+                while chain[-1] != start:
+                    chain.append(parents[chain[-1]])
+                return [*reversed(chain), start]
+            if nxt not in parents:
+                parents[nxt] = node
+                queue.append(nxt)
+    return [start, start]

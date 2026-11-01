@@ -16,6 +16,12 @@ class TestPyArchConfigLoad:
         with pytest.raises(PyArchError, match="pyproject.toml not found"):
             PyArchConfig.load(project.root)
 
+    def test_malformed_pyproject_raises_error(self, tmp_test_dir):
+        (tmp_test_dir / "pyproject.toml").write_text("[[[ not toml", encoding="utf-8")
+
+        with pytest.raises(PyArchError, match="Cannot parse"):
+            PyArchConfig.load(tmp_test_dir)
+
     def test_loads_existing_pyproject(self, make_project):
         """Loads existing pyproject.toml."""
         project = make_project(with_pyproject=False)

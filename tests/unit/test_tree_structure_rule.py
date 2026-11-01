@@ -2,17 +2,18 @@
 
 import pytest
 
-from pyarchrules.core.rules.linter.tree_rule import TreeRule
+from pyarchrules.core.rules.tree_rule import TreeRule
 from pyarchrules.model.spec.service_spec import TreeMode
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_dirs(base, *paths):
     for p in paths:
         (base / p).mkdir(parents=True, exist_ok=True)
+
 
 def make_files(base, *paths):
     for p in paths:
@@ -24,6 +25,7 @@ def make_files(base, *paths):
 # ---------------------------------------------------------------------------
 # Common (all modes)
 # ---------------------------------------------------------------------------
+
 
 class TestTreeCommon:
     def test_no_tree_passes(self, make_service_spec):
@@ -66,6 +68,7 @@ class TestTreeCommon:
 # mode = "exists"
 # ---------------------------------------------------------------------------
 
+
 class TestTreeModeExists:
     """Extra directories anywhere are silently ignored."""
 
@@ -91,6 +94,7 @@ class TestTreeModeExists:
 # ---------------------------------------------------------------------------
 # mode = "strict"
 # ---------------------------------------------------------------------------
+
 
 class TestTreeModeStrict:
     """No extra dirs at covered levels; leaf internals are not inspected."""
@@ -162,19 +166,18 @@ class TestTreeModeStrict:
         monkeypatch.chdir(tmp_test_dir)
         make_dirs(tmp_test_dir, "api", "api/v1", "domain", "infra", "api/v2")
         # infra → extra at root; v2 → extra inside api
-        spec = make_service_spec(
-            tree=["api", "api/v1", "domain"], tree_mode=TreeMode.STRICT
-        )
+        spec = make_service_spec(tree=["api", "api/v1", "domain"], tree_mode=TreeMode.STRICT)
         v = TreeRule(spec).validate()
         warnings = [x for x in v if x.severity == "warning"]
         paths = {w.details["path"] for w in warnings}
-        assert "." in paths      # infra caught at root
-        assert "api" in paths    # v2 caught inside api
+        assert "." in paths  # infra caught at root
+        assert "api" in paths  # v2 caught inside api
 
 
 # ---------------------------------------------------------------------------
 # mode = "full"
 # ---------------------------------------------------------------------------
+
 
 class TestTreeModeExact:
     """Strict + recursive walk inside leaf directories."""
@@ -196,9 +199,7 @@ class TestTreeModeExact:
         assert len(recursive) == 1
         assert "api/internal" in recursive[0].details["undeclared_paths"]
 
-    def test_undeclared_deep_inside_leaf_caught(
-        self, make_service_spec, tmp_test_dir, monkeypatch
-    ):
+    def test_undeclared_deep_inside_leaf_caught(self, make_service_spec, tmp_test_dir, monkeypatch):
         monkeypatch.chdir(tmp_test_dir)
         make_dirs(tmp_test_dir, "api", "api/v1", "api/v1/handlers")  # api is a leaf
         spec = make_service_spec(tree=["api"], tree_mode=TreeMode.EXACT)
@@ -262,8 +263,10 @@ class TestTreeModeExact:
         monkeypatch.chdir(tmp_test_dir)
         make_dirs(
             tmp_test_dir,
-            "api", "api/internal",          # api is a leaf
-            "domain", "domain/core",         # domain is a leaf
+            "api",
+            "api/internal",  # api is a leaf
+            "domain",
+            "domain/core",  # domain is a leaf
         )
         spec = make_service_spec(tree=["api", "domain"], tree_mode=TreeMode.EXACT)
         v = TreeRule(spec).validate()
@@ -273,21 +276,18 @@ class TestTreeModeExact:
         assert "api/internal" in undeclared
         assert "domain/core" in undeclared
 
-    def test_strict_and_leaf_violations_coexist(
-        self, make_service_spec, tmp_test_dir, monkeypatch
-    ):
+    def test_strict_and_leaf_violations_coexist(self, make_service_spec, tmp_test_dir, monkeypatch):
         """infra at root (strict) + internal inside leaf domain (recursive) — no overlap."""
         monkeypatch.chdir(tmp_test_dir)
         make_dirs(
             tmp_test_dir,
-            "api", "api/v1",    # api non-leaf, v1 is leaf
-            "domain",           # leaf
-            "domain/core",      # undeclared inside leaf → recursive
-            "infra",            # undeclared at root → strict
+            "api",
+            "api/v1",  # api non-leaf, v1 is leaf
+            "domain",  # leaf
+            "domain/core",  # undeclared inside leaf → recursive
+            "infra",  # undeclared at root → strict
         )
-        spec = make_service_spec(
-            tree=["api", "api/v1", "domain"], tree_mode=TreeMode.EXACT
-        )
+        spec = make_service_spec(tree=["api", "api/v1", "domain"], tree_mode=TreeMode.EXACT)
         v = TreeRule(spec).validate()
         strict_v = [x for x in v if "extra_items" in x.details]
         recursive_v = [x for x in v if "undeclared_paths" in x.details]
@@ -303,6 +303,7 @@ class TestTreeModeExact:
 # SpecLoader integration
 # ---------------------------------------------------------------------------
 
+
 class TestTreeModeSpecLoader:
     def test_default_mode_is_exists(self, make_project, tmp_test_dir):
         project = make_project(
@@ -311,42 +312,58 @@ class TestTreeModeSpecLoader:
             create_service_dirs=True,
         )
         from pyarchrules.core.spec_loader import SpecLoader
+
         spec = SpecLoader(project.root).load()
         assert spec.services["svc"].tree_mode == TreeMode.EXISTS
 
     def test_strict_mode_parsed(self, make_project):
         project = make_project(with_pyproject=False)
-        project.write_pyproject({
-            "project": {"name": "test"},
-            "tool": {"pyarchrules": {
-                "services": {"svc": {"path": ".", "tree_mode": "strict"}},
-            }},
-        })
+        project.write_pyproject(
+            {
+                "project": {"name": "test"},
+                "tool": {
+                    "pyarchrules": {
+                        "services": {"svc": {"path": ".", "tree_mode": "strict"}},
+                    }
+                },
+            }
+        )
         from pyarchrules.core.spec_loader import SpecLoader
+
         spec = SpecLoader(project.root).load()
         assert spec.services["svc"].tree_mode == TreeMode.STRICT
 
     def test_exact_mode_parsed(self, make_project):
         project = make_project(with_pyproject=False)
-        project.write_pyproject({
-            "project": {"name": "test"},
-            "tool": {"pyarchrules": {
-                "services": {"svc": {"path": ".", "tree_mode": "exact"}},
-            }},
-        })
+        project.write_pyproject(
+            {
+                "project": {"name": "test"},
+                "tool": {
+                    "pyarchrules": {
+                        "services": {"svc": {"path": ".", "tree_mode": "exact"}},
+                    }
+                },
+            }
+        )
         from pyarchrules.core.spec_loader import SpecLoader
+
         spec = SpecLoader(project.root).load()
         assert spec.services["svc"].tree_mode == TreeMode.EXACT
 
     def test_invalid_mode_raises_error(self, make_project):
         from pyarchrules.core.errors import PyArchError
         from pyarchrules.core.spec_loader import SpecLoader
+
         project = make_project(with_pyproject=False)
-        project.write_pyproject({
-            "project": {"name": "test"},
-            "tool": {"pyarchrules": {
-                "services": {"svc": {"path": ".", "tree_mode": "turbo"}},
-            }},
-        })
+        project.write_pyproject(
+            {
+                "project": {"name": "test"},
+                "tool": {
+                    "pyarchrules": {
+                        "services": {"svc": {"path": ".", "tree_mode": "turbo"}},
+                    }
+                },
+            }
+        )
         with pytest.raises(PyArchError, match="invalid tree_mode"):
             SpecLoader(project.root).load()

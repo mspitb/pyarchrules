@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from pyarchrules.core.errors import ConfigError, ServiceNotFoundError
-from pyarchrules.core.registries import DSLRegistry, LinterRegistry
 from pyarchrules.core.reporting import ViolationReporter
+from pyarchrules.core.rules.factory import RuleFactory
+from pyarchrules.core.rules.rule import Rule
 from pyarchrules.core.rules.rule_set import ServiceRuleSet
+from pyarchrules.core.runner import RuleRunner
 from pyarchrules.core.spec_loader import SpecLoader
 from pyarchrules.model.rules import RuleEvalResult
 from pyarchrules.model.spec import ProjectSpec, ServiceSpec
@@ -19,7 +21,7 @@ class PyArchRules:
     * ``PyArchRules()`` / ``PyArchRules(path)`` — discover ``pyproject.toml``
       and load services from ``[tool.pyarchrules.services]``.
     * :meth:`from_services` — declare services in code, no TOML required.
-    * :meth:`from_spec` — pass a pre-built :class:`ProjectSpec` (power-user).
+    * :meth:`from_spec` — pass a pre-built :class:`ProjectSpec`.
 
     Parameters
     ----------
@@ -37,10 +39,6 @@ class PyArchRules:
         project_root = self._find_project_root(path)
         project_spec = SpecLoader(project_root).load()
         self._init_state(project_root, project_spec)
-
-    # ------------------------------------------------------------------
-    # Alternative constructors
-    # ------------------------------------------------------------------
 
     @classmethod
     def from_services(
@@ -116,8 +114,10 @@ class PyArchRules:
         self._project_root = project_root
         self._project_spec = project_spec
         self._services = {name: spec.path for name, spec in project_spec.services.items()}
-        self._dsl_registry = DSLRegistry(project_spec)
-        self._linter_registry = LinterRegistry(project_spec)
+        self._rule_sets = {
+            name: ServiceRuleSet(spec) for name, spec in project_spec.services.items()
+        }
+        self._config_rules: dict[str, list[Rule]] = RuleFactory.create_all(project_spec)
 
     @property
     def project_root(self) -> Path:
@@ -135,15 +135,11 @@ class PyArchRules:
     @property
     def linter_rule_count(self) -> int:
         """Total number of linter rules across all services."""
-        return sum(len(rules) for rules in self._linter_registry.get_all().values())
+        return sum(len(rules) for rules in self._config_rules.values())
 
-    def linter_rules_for(self, service_name: str) -> list:
-        """Return the linter rules registered for *service_name*."""
-        return self._linter_registry.get(service_name, [])
-
-    # ------------------------------------------------------------------
-    # DSL API
-    # ------------------------------------------------------------------
+    def linter_rules_for(self, service_name: str) -> list[Rule]:
+        """Return the `pyproject.toml` rules enabled for *service_name*."""
+        return list(self._config_rules.get(service_name, []))
 
     def for_service(self, service_name: str) -> ServiceRuleSet:
         """Return the :class:`ServiceRuleSet` for *service_name*.
@@ -163,7 +159,7 @@ class PyArchRules:
         ServiceNotFoundError
             When *service_name* is not declared in the configuration.
         """
-        rule_set = self._dsl_registry.get(service_name)
+        rule_set = self._rule_sets.get(service_name)
         if rule_set is None:
             available = ", ".join(f"'{s}'" for s in self._project_spec.services)
             raise ServiceNotFoundError(
@@ -196,15 +192,12 @@ class PyArchRules:
         RuleEvalResult
             Aggregated violations across every DSL rule.
         """
-        return self._dsl_registry.validate(
+        rules = [rule for rule_set in self._rule_sets.values() for rule in rule_set.rules]
+        return RuleRunner(rules).run(
             raise_on_violation=raise_on_violation,
             verbose=verbose,
             reporter=reporter,
         )
-
-    # ------------------------------------------------------------------
-    # Linter API
-    # ------------------------------------------------------------------
 
     def check_linter(
         self,
@@ -231,7 +224,8 @@ class PyArchRules:
         RuleEvalResult
             Aggregated violations across every linter rule.
         """
-        return self._linter_registry.validate(
+        rules = [rule for service_rules in self._config_rules.values() for rule in service_rules]
+        return RuleRunner(rules).run(
             raise_on_violation=raise_on_violation,
             verbose=verbose,
             reporter=reporter,
@@ -239,13 +233,7 @@ class PyArchRules:
 
     @staticmethod
     def _find_project_root(start: Path) -> Path:
-        """Locate the nearest ancestor directory containing ``pyproject.toml``.
-
-        Kept as a small convenience for DSL / pytest callers that pass an
-        arbitrary path inside the project.  CLI callers always pass an
-        already-resolved root, in which case this function returns *start*
-        unchanged after a single ``exists()`` check.
-        """
+        """Locate the nearest ancestor directory containing ``pyproject.toml``."""
         for parent in [start, *start.parents]:
             if (parent / "pyproject.toml").exists():
                 return parent
