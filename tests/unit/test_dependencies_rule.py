@@ -169,9 +169,7 @@ def test_service_prefixed_import_allowed_when_rule_permits(
     monkeypatch.chdir(tmp_test_dir)
     (tmp_test_dir / "core" / "legacy").mkdir(parents=True)
     (tmp_test_dir / "core" / "new").mkdir()
-    (tmp_test_dir / "core" / "new" / "new.py").write_text(
-        "from core.legacy.legacy import Legacy\n"
-    )
+    (tmp_test_dir / "core" / "new" / "new.py").write_text("from core.legacy.legacy import Legacy\n")
 
     spec = make_service_spec(name="core", path="core", dependencies=["new -> legacy"])
 
