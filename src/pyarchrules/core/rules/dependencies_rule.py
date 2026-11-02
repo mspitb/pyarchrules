@@ -126,6 +126,7 @@ class DependenciesRule(LinterRule, DslRule):
             for d in service_dir.iterdir()
             if d.is_dir() and not d.name.startswith((".", "_"))
         }
+        root_name = service_dir.name
 
         violations: list[RuleViolation] = []
         for py_file in iter_py_files(service_dir):
@@ -141,7 +142,9 @@ class DependenciesRule(LinterRule, DslRule):
                 if not imp.is_relative and imp.module.split(".", 1)[0] in STDLIB_MODULES:
                     continue
 
-                imported = self._resolve_import(imp.module, module_path)
+                imported = self._resolve_import(
+                    imp.module, module_path, root_name, internal_packages
+                )
                 # Third-party imports have no matching folder inside the service.
                 if imported.split("/")[0] not in internal_packages:
                     continue
@@ -164,14 +167,22 @@ class DependenciesRule(LinterRule, DslRule):
         return violations
 
     @staticmethod
-    def _resolve_import(imp: str, current_module: str) -> str:
+    def _resolve_import(
+        imp: str, current_module: str, root_name: str, internal_packages: set[str]
+    ) -> str:
         """Resolve an import string to a service-relative folder path.
 
         ``"domain.models"`` → ``"domain/models"``; ``"..utils"`` imported from
-        ``"api/controllers"`` → ``"api/utils"``.
+        ``"api/controllers"`` → ``"api/utils"``. An absolute import prefixed with
+        the service directory name (``"core.legacy.x"`` in service ``core``) is
+        resolved without that prefix, unless the service has a folder of that name.
         """
         if not imp.startswith("."):
-            return imp.replace(".", "/")
+            resolved_path = imp.replace(".", "/")
+            head, _, tail = resolved_path.partition("/")
+            if head == root_name and head not in internal_packages and tail:
+                return tail
+            return resolved_path
 
         resolved = resolve_relative(imp, [p for p in current_module.split("/") if p])
         return "/".join(resolved) if resolved is not None else ""
