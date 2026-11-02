@@ -142,3 +142,37 @@ def test_relative_import_resolution_across_packages(make_service_spec, tmp_test_
     violations = DependenciesRule(make_service_spec(dependencies=["domain -> api"])).validate()
 
     assert [v.details["imported"] for v in violations] == ["domain"]
+
+
+def test_showcase_new_cannot_import_legacy_via_service_prefixed_import(
+    make_service_spec, tmp_test_dir, monkeypatch
+):
+    monkeypatch.chdir(tmp_test_dir)
+    (tmp_test_dir / "core" / "legacy").mkdir(parents=True)
+    (tmp_test_dir / "core" / "new").mkdir()
+    (tmp_test_dir / "core" / "legacy" / "legacy.py").write_text("class Legacy: ...\n")
+    (tmp_test_dir / "core" / "new" / "new.py").write_text(
+        "from core.legacy.legacy import Legacy\n\nlegacy = Legacy()\n"
+    )
+
+    spec = make_service_spec(name="core", path="core", dependencies=["legacy -> new"])
+    violations = DependenciesRule(spec).validate()
+
+    assert [(v.file, v.details["imported"]) for v in violations] == [
+        ("new/new.py", "legacy/legacy")
+    ]
+
+
+def test_service_prefixed_import_allowed_when_rule_permits(
+    make_service_spec, tmp_test_dir, monkeypatch
+):
+    monkeypatch.chdir(tmp_test_dir)
+    (tmp_test_dir / "core" / "legacy").mkdir(parents=True)
+    (tmp_test_dir / "core" / "new").mkdir()
+    (tmp_test_dir / "core" / "new" / "new.py").write_text(
+        "from core.legacy.legacy import Legacy\n"
+    )
+
+    spec = make_service_spec(name="core", path="core", dependencies=["new -> legacy"])
+
+    assert DependenciesRule(spec).validate() == []
